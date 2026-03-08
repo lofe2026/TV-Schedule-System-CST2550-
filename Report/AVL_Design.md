@@ -55,3 +55,21 @@ FUNCTION Compare(p1, p2)
 END FUNCTION
 
 Programmes are grouped by Channel and sorted by StartTime within each channel.
+
+## 5. Helper Functions
+
+FUNCTION Height(node)
+    IF node IS NULL
+        RETURN 0
+    RETURN node.height
+END FUNCTION
+
+FUNCTION UpdateHeight(node)
+    node.height = 1 + MAX(Height(node.left), Height(node.right))
+END FUNCTION
+
+FUNCTION GetBalance(node)
+    RETURN Height(node.left) - Height(node.right)
+END FUNCTION
+
+These functions maintain node height and determine tree balance.
