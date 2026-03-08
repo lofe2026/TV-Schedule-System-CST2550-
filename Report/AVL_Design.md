@@ -22,3 +22,36 @@ STRUCT Programme
 END STRUCT
 
 StartTime is used as part of the ordering key.
+
+## 3. AVL Node Structure
+
+STRUCT Node
+    Programme data
+    Node left
+    Node right
+    INTEGER height
+END STRUCT
+
+Each node stores one Programme and maintains height information for balancing.
+
+## 4. Comparison Function
+
+FUNCTION Compare(p1, p2)
+
+    IF p1.Channel < p2.Channel
+        RETURN -1
+
+    IF p1.Channel > p2.Channel
+        RETURN 1
+
+    IF p1.StartTime < p2.StartTime
+        RETURN -1
+
+    IF p1.StartTime > p2.StartTime
+        RETURN 1
+
+    RETURN 0
+
+END FUNCTION
+
+Programmes are grouped by Channel and sorted by StartTime within each channel.
