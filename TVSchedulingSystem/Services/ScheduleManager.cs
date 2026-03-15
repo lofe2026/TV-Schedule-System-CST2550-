@@ -71,7 +71,7 @@ namespace TVSchedulingSystem.Services
         // Removes a schedule from both storage and database.
         public bool RemoveSchedule(int channelId, DateTime startTime)
         {
-            Schedule schedule = _storage.GetSchedule(channelId, startTime);
+            Schedule? schedule = _storage.GetSchedule(channelId, startTime);
 
             if (schedule == null)
                 return false;
@@ -93,7 +93,7 @@ namespace TVSchedulingSystem.Services
         }
 
         // Returns one schedule for a given channel and start time.
-        public Schedule GetSchedule(int channelId, DateTime startTime)
+        public Schedule? GetSchedule(int channelId, DateTime startTime)
         {
             return _storage.GetSchedule(channelId, startTime);
         }

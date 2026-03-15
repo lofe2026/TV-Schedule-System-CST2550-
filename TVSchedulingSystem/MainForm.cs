@@ -26,6 +26,7 @@ namespace TVSchedulingSystem
             cmbChannel.Items.Add(2);
             cmbChannel.Items.Add(3);
             cmbChannel.SelectedIndex = 0;
+            cmbChannel.SelectedIndexChanged += cmbChannel_SelectedIndexChanged;
 
             numDuration.Minimum = 1;
             numDuration.Maximum = 600;
@@ -42,6 +43,7 @@ namespace TVSchedulingSystem
             lblClock.Text = DateTime.Now.ToString("HH:mm:ss");
         }
 
+        // Refreshes the grid to show schedules for the selected channel.
         private void RefreshGrid(int channelId)
         {
             dataGridView1.DataSource = null;
@@ -376,12 +378,22 @@ namespace TVSchedulingSystem
 
         }
 
+        // Loads schedules from the database when the form opens.
         private void MainForm_Load(object? sender, EventArgs e)
         {
-            if (cmbChannel.SelectedItem != null)
+            try
             {
-                int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
-                RefreshGrid(channelId);
+                _manager.LoadSchedulesFromDatabase();
+
+                if (cmbChannel.SelectedItem != null)
+                {
+                    int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
+                    RefreshGrid(channelId);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading schedules from database: " + ex.Message);
             }
         }
 

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TVSchedulingSystem")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b1455564922cd909bee1ea8ff5a988134cdf9957")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6f73ae6d129788157d9de3b5c9f0242633fb6ade")]
 [assembly: System.Reflection.AssemblyProductAttribute("TVSchedulingSystem")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TVSchedulingSystem")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
