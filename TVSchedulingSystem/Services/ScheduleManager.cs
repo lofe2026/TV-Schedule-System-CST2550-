@@ -1,21 +1,32 @@
 using System;
-using System.Collections.Generic;
 using TVSchedulingSystem.Models;
 using TVSchedulingSystem.DataStructures;
+using TVSchedulingSystem.Repositories;
 
 namespace TVSchedulingSystem.Services
 {
     public class ScheduleManager
     {
         private readonly ScheduleStorage _storage;
+        private readonly ScheduleRepository _repository;
 
         public ScheduleManager()
         {
             _storage = new ScheduleStorage();
+            _repository = new ScheduleRepository();
         }
 
+        // ---------------------------------
+        // LOAD DATA FROM DATABASE
+        // ---------------------------------
+        public void LoadFromDatabase()
+        {
+            _repository.LoadSchedules(_storage);
+        }
 
-        // Add Schedule
+        // ---------------------------------
+        // ADD SCHEDULE
+        // ---------------------------------
         public bool AddSchedule(
             int scheduleId,
             int channelId,
@@ -27,7 +38,6 @@ namespace TVSchedulingSystem.Services
             if (durationMinutes <= 0)
                 throw new ArgumentException("Duration must be greater than zero.");
 
-            // Normalize time (remove seconds)
             startTime = new DateTime(
                 startTime.Year,
                 startTime.Month,
@@ -38,7 +48,7 @@ namespace TVSchedulingSystem.Services
 
             DateTime endTime = startTime.AddMinutes(durationMinutes);
 
-            var schedule = new Schedule
+            Schedule schedule = new Schedule
             {
                 ScheduleID = scheduleId,
                 ChannelID = channelId,
@@ -48,36 +58,40 @@ namespace TVSchedulingSystem.Services
                 ImagePath = imagePath
             };
 
-            // Send schedule to storage
-            return _storage.AddSchedule(schedule);
+            bool added = _storage.AddSchedule(schedule);
+
+            if (added)
+            {
+                _repository.InsertSchedule(schedule);
+            }
+
+            return added;
         }
 
-        // Remove Schedule
+        // ---------------------------------
+        // REMOVE
+        // ---------------------------------
         public bool RemoveSchedule(int channelId, DateTime startTime)
         {
             return _storage.RemoveSchedule(channelId, startTime);
         }
 
-        // Get Schedules By Channel
-
-        public List<Schedule> GetSchedulesByChannel(int channelId)
-        {
-            return _storage.GetSchedulesByChannel(channelId);
-        }
-
-        // Get Specific Schedule
-        public Schedule? GetSchedule(int channelId, DateTime startTime)
+        // ---------------------------------
+        // GET SCHEDULE
+        // ---------------------------------
+        public Schedule GetSchedule(int channelId, DateTime startTime)
         {
             return _storage.GetSchedule(channelId, startTime);
         }
 
-        // Get All Channel IDs
-        public List<int> GetAllChannels()
+        // ---------------------------------
+        // GET SCHEDULES BY CHANNEL
+        // ---------------------------------
+        public Schedule[] GetSchedulesByChannel(int channelId)
         {
-            return _storage.GetAllChannels();
+            return _storage.GetSchedulesByChannel(channelId);
         }
 
-        // Clear All Data
         public void Clear()
         {
             _storage.Clear();

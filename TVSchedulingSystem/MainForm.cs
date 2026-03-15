@@ -1,6 +1,7 @@
 using TVSchedulingSystem.Services;
 using TVSchedulingSystem.Models;
 using System.IO;
+using System.Data.SqlClient;
 
 namespace TVSchedulingSystem
 {
@@ -378,6 +379,8 @@ namespace TVSchedulingSystem
 
         private void MainForm_Load(object? sender, EventArgs e)
         {
+            _manager.LoadFromDatabase();
+
             if (cmbChannel.SelectedItem != null)
             {
                 int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
@@ -516,13 +519,10 @@ namespace TVSchedulingSystem
             int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
             int requiredDuration = (int)numDuration.Value;
 
-            var schedules = _manager
-                .GetSchedulesByChannel(channelId)
-                .OrderBy(s => s.StartTime)
-                .ToList();
+            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId);
 
             // If no schedules exist → suggest now
-            if (schedules.Count == 0)
+            if (schedules.Length == 0)
             {
                 DateTime now = DateTime.Now;
 
@@ -541,7 +541,7 @@ namespace TVSchedulingSystem
             }
 
             // Check gaps between schedules
-            for (int i = 0; i < schedules.Count - 1; i++)
+            for (int i = 0; i < schedules.Length - 1; i++)
             {
                 DateTime currentEnd = schedules[i].EndTime;
                 DateTime nextStart = schedules[i + 1].StartTime;

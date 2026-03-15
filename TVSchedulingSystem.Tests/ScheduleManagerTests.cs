@@ -24,9 +24,10 @@ namespace TVSchedulingSystem.Tests
             var result = _manager.AddSchedule(
                 scheduleId: 1,
                 channelId: 1,
-                programId: 100,
+                programId: "News",
                 startTime: new DateTime(2025, 1, 1, 10, 0, 0),
-                durationMinutes: 60);
+                durationMinutes: 60,
+                imagePath: "news.jpg");
 
             Assert.IsTrue(result);
         }
@@ -38,14 +39,16 @@ namespace TVSchedulingSystem.Tests
         public void AddSchedule_WithConflict_ShouldReturnFalse()
         {
             _manager.AddSchedule(
-                1, 1, 100,
+                1, 1, "News",
                 new DateTime(2025, 1, 1, 10, 0, 0),
-                60);
+                60,
+                "news.jpg");
 
             var result = _manager.AddSchedule(
-                2, 1, 101,
+                2, 1, "Movie",
                 new DateTime(2025, 1, 1, 10, 30, 0), // Overlaps
-                60);
+                60,
+                "movie.jpg");
 
             Assert.IsFalse(result);
         }
@@ -57,9 +60,10 @@ namespace TVSchedulingSystem.Tests
         public void RemoveSchedule_ShouldReturnTrue()
         {
             _manager.AddSchedule(
-                1, 1, 100,
+                1, 1, "Sports",
                 new DateTime(2025, 1, 1, 10, 0, 0),
-                60);
+                60,
+                "sports.jpg");
 
             var result = _manager.RemoveSchedule(
                 1,
@@ -77,14 +81,15 @@ namespace TVSchedulingSystem.Tests
             var startTime = new DateTime(2025, 1, 1, 10, 0, 0);
 
             _manager.AddSchedule(
-                1, 1, 100,
+                1, 1, "Documentary",
                 startTime,
-                60);
+                60,
+                "doc.jpg");
 
             var schedule = _manager.GetSchedule(1, startTime);
 
             Assert.IsNotNull(schedule);
-            Assert.AreEqual(100, schedule.ProgramID);
+            Assert.AreEqual("Documentary", schedule.ProgramID);
         }
     }
 }

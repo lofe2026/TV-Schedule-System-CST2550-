@@ -1,17 +1,18 @@
 using System;
-using System.Collections.Generic;
 using TVSchedulingSystem.Models;
+using System.Data.SqlClient;
 
 namespace TVSchedulingSystem.DataStructures
 {
     public class ScheduleStorage
     {
-        // Hash Table: ChannelID → List of schedules
-        private Dictionary<int, List<Schedule>> table;
+        private Schedule[] schedules;
+        private int count;
 
         public ScheduleStorage()
         {
-            table = new Dictionary<int, List<Schedule>>();
+            schedules = new Schedule[100];
+            count = 0;
         }
 
         // -------------------------------------
@@ -25,24 +26,38 @@ namespace TVSchedulingSystem.DataStructures
             if (schedule.EndTime <= schedule.StartTime)
                 throw new ArgumentException("End time must be after start time.");
 
-            // Create channel bucket if it does not exist
-            if (!table.ContainsKey(schedule.ChannelID))
-                table[schedule.ChannelID] = new List<Schedule>();
-
-            var schedules = table[schedule.ChannelID];
-
             // Conflict detection
-            foreach (var s in schedules)
+            for (int i = 0; i < count; i++)
             {
-                if (schedule.StartTime < s.EndTime &&
+                var s = schedules[i];
+
+                if (s.ChannelID == schedule.ChannelID &&
+                    schedule.StartTime < s.EndTime &&
                     schedule.EndTime > s.StartTime)
                 {
                     return false;
                 }
             }
 
-            schedules.Add(schedule);
+            if (count >= schedules.Length)
+                Resize();
+
+            schedules[count++] = schedule;
+
             return true;
+        }
+
+        // -------------------------------------
+        // Resize Array
+        // -------------------------------------
+        private void Resize()
+        {
+            Schedule[] newArray = new Schedule[schedules.Length * 2];
+
+            for (int i = 0; i < schedules.Length; i++)
+                newArray[i] = schedules[i];
+
+            schedules = newArray;
         }
 
         // -------------------------------------
@@ -50,16 +65,15 @@ namespace TVSchedulingSystem.DataStructures
         // -------------------------------------
         public bool RemoveSchedule(int channelId, DateTime startTime)
         {
-            if (!table.ContainsKey(channelId))
-                return false;
-
-            var schedules = table[channelId];
-
-            for (int i = 0; i < schedules.Count; i++)
+            for (int i = 0; i < count; i++)
             {
-                if (schedules[i].StartTime == startTime)
+                if (schedules[i].ChannelID == channelId &&
+                    schedules[i].StartTime == startTime)
                 {
-                    schedules.RemoveAt(i);
+                    for (int j = i; j < count - 1; j++)
+                        schedules[j] = schedules[j + 1];
+
+                    count--;
                     return true;
                 }
             }
@@ -68,47 +82,86 @@ namespace TVSchedulingSystem.DataStructures
         }
 
         // -------------------------------------
-        // Get Schedule By Start Time
+        // Get Schedule
         // -------------------------------------
-        public Schedule? GetSchedule(int channelId, DateTime startTime)
+        public Schedule GetSchedule(int channelId, DateTime startTime)
         {
-            if (!table.ContainsKey(channelId))
-                return null;
-
-            foreach (var schedule in table[channelId])
+            for (int i = 0; i < count; i++)
             {
-                if (schedule.StartTime == startTime)
-                    return schedule;
+                if (schedules[i].ChannelID == channelId &&
+                    schedules[i].StartTime == startTime)
+                {
+                    return schedules[i];
+                }
             }
 
             return null;
         }
 
         // -------------------------------------
-        // Get Schedules By Channel
+        // Get schedules by channel
         // -------------------------------------
-        public List<Schedule> GetSchedulesByChannel(int channelId)
+        public Schedule[] GetSchedulesByChannel(int channelId)
         {
-            if (!table.ContainsKey(channelId))
-                return new List<Schedule>();
+            Schedule[] result = new Schedule[count];
+            int index = 0;
 
-            return new List<Schedule>(table[channelId]);
+            for (int i = 0; i < count; i++)
+            {
+                if (schedules[i].ChannelID == channelId)
+                {
+                    result[index++] = schedules[i];
+                }
+            }
+
+            Schedule[] final = new Schedule[index];
+
+            for (int i = 0; i < index; i++)
+                final[i] = result[i];
+
+            return final;
         }
 
         // -------------------------------------
-        // Get All Channels
+        // Get all channels
         // -------------------------------------
-        public List<int> GetAllChannels()
+        public int[] GetAllChannels()
         {
-            return new List<int>(table.Keys);
+            int[] channels = new int[count];
+            int index = 0;
+
+            for (int i = 0; i < count; i++)
+            {
+                bool exists = false;
+
+                for (int j = 0; j < index; j++)
+                {
+                    if (channels[j] == schedules[i].ChannelID)
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+
+                if (!exists)
+                    channels[index++] = schedules[i].ChannelID;
+            }
+
+            int[] final = new int[index];
+
+            for (int i = 0; i < index; i++)
+                final[i] = channels[i];
+
+            return final;
         }
 
         // -------------------------------------
-        // Clear Storage
+        // Clear
         // -------------------------------------
         public void Clear()
         {
-            table.Clear();
+            schedules = new Schedule[100];
+            count = 0;
         }
     }
 }
