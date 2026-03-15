@@ -1,0 +1,7 @@
+# Project Description
+
+The TV Programme Scheduling System was developed to improve the management and organisation of television programmes across multiple channels. In a broadcasting environment, careful scheduling is essential to ensure that programmes are assigned to suitable time slots without clashes or confusion for viewers. This project therefore provides a system that allows authorised users to create, manage, and monitor programme schedules in a more efficient and structured manner.
+
+The system supports the main scheduling tasks required in a television setting. These include adding programme details, assigning programmes to channels, defining start and end times, detecting scheduling conflicts, and displaying the final schedule clearly. The project also considers different categories of users, with administrative users managing the schedules while viewers or customers can access programme information easily.
+
+Overall, this project provides a practical example of how software engineering principles can be applied to solve a real scheduling problem. It combines planning, system design, implementation, testing, and documentation within a single project, while also giving the team an opportunity to apply structured development methods in a realistic context.
