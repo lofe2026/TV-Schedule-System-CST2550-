@@ -9,6 +9,14 @@ namespace TVSchedulingSystem.Services
     {
         private readonly ScheduleStorage _storage;
         private readonly ScheduleRepository _repository;
+        private readonly bool _useDatabase;
+
+        public ScheduleManager(bool useDatabase = true)
+        {
+            _storage = new ScheduleStorage();
+            _repository = new ScheduleRepository();
+            _useDatabase = useDatabase;
+        }
 
         public ScheduleManager()
         {
@@ -60,7 +68,7 @@ namespace TVSchedulingSystem.Services
 
             bool added = _storage.AddSchedule(schedule);
 
-            if (added)
+            if (added && _useDatabase)
             {
                 _repository.InsertSchedule(schedule);
             }
