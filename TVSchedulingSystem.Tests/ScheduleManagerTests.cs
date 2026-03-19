@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using TVSchedulingSystem.Services;
 
@@ -12,84 +12,99 @@ namespace TVSchedulingSystem.Tests
         [TestInitialize]
         public void Setup()
         {
-            _manager = new ScheduleManager();
+            // 🚀 IMPORTANT: disable database during tests
+            _manager = new ScheduleManager(false);
         }
 
-        // -------------------------------------------------
+        // -----------------------------------------
         // TEST 1: Add schedule without conflict
-        // -------------------------------------------------
+        // -----------------------------------------
         [TestMethod]
         public void AddSchedule_NoConflict_ShouldReturnTrue()
         {
-            var result = _manager.AddSchedule(
-                scheduleId: 1,
-                channelId: 1,
-                programId: "News",
-                startTime: new DateTime(2025, 1, 1, 10, 0, 0),
-                durationMinutes: 60,
-                imagePath: "news.jpg");
+            bool result = _manager.AddSchedule(
+                1,
+                1,
+                "News",
+                new DateTime(2025, 1, 1, 10, 0, 0),
+                60,
+                "test.jpg"
+            );
 
             Assert.IsTrue(result);
         }
 
-        // -------------------------------------------------
-        // TEST 2: Add schedule with conflict
-        // -------------------------------------------------
+        // -----------------------------------------
+        // TEST 2: Conflict detection
+        // -----------------------------------------
         [TestMethod]
         public void AddSchedule_WithConflict_ShouldReturnFalse()
         {
             _manager.AddSchedule(
-                1, 1, "News",
+                1,
+                1,
+                "News",
                 new DateTime(2025, 1, 1, 10, 0, 0),
                 60,
-                "news.jpg");
+                "test.jpg"
+            );
 
-            var result = _manager.AddSchedule(
-                2, 1, "Movie",
-                new DateTime(2025, 1, 1, 10, 30, 0), // Overlaps
+            bool result = _manager.AddSchedule(
+                2,
+                1,
+                "Movie",
+                new DateTime(2025, 1, 1, 10, 30, 0), // overlap
                 60,
-                "movie.jpg");
+                "test.jpg"
+            );
 
             Assert.IsFalse(result);
         }
 
-        // -------------------------------------------------
+        // -----------------------------------------
         // TEST 3: Remove schedule
-        // -------------------------------------------------
+        // -----------------------------------------
         [TestMethod]
         public void RemoveSchedule_ShouldReturnTrue()
         {
             _manager.AddSchedule(
-                1, 1, "Sports",
+                1,
+                1,
+                "News",
                 new DateTime(2025, 1, 1, 10, 0, 0),
                 60,
-                "sports.jpg");
+                "test.jpg"
+            );
 
-            var result = _manager.RemoveSchedule(
+            bool result = _manager.RemoveSchedule(
                 1,
-                new DateTime(2025, 1, 1, 10, 0, 0));
+                new DateTime(2025, 1, 1, 10, 0, 0)
+            );
 
             Assert.IsTrue(result);
         }
 
-        // -------------------------------------------------
-        // TEST 4: Get schedule by time
-        // -------------------------------------------------
+        // -----------------------------------------
+        // TEST 4: Get schedule
+        // -----------------------------------------
         [TestMethod]
         public void GetSchedule_ShouldReturnCorrectSchedule()
         {
-            var startTime = new DateTime(2025, 1, 1, 10, 0, 0);
+            DateTime startTime = new DateTime(2025, 1, 1, 10, 0, 0);
 
             _manager.AddSchedule(
-                1, 1, "Documentary",
+                1,
+                1,
+                "News",
                 startTime,
                 60,
-                "doc.jpg");
+                "test.jpg"
+            );
 
             var schedule = _manager.GetSchedule(1, startTime);
 
             Assert.IsNotNull(schedule);
-            Assert.AreEqual("Documentary", schedule.ProgramID);
+            Assert.AreEqual("News", schedule.ProgramID);
         }
     }
 }
