@@ -14,7 +14,7 @@ namespace TVSchedulingSystem.Repositories
                 conn.Open();
 
                 string query =
-                @"INSERT INTO Schedule
+                @"INSERT INTO Schedules
                 (ScheduleID, ChannelID, ProgramID, StartTime, EndTime, ImagePath)
                 VALUES
                 (@ScheduleID,@ChannelID,@ProgramID,@StartTime,@EndTime,@ImagePath)";
@@ -40,7 +40,7 @@ namespace TVSchedulingSystem.Repositories
             {
                 conn.Open();
 
-                string query = "SELECT * FROM Schedule";
+                string query = "SELECT * FROM Schedules";
 
                 using (var cmd = new SqlCommand(query, conn))
                 using (var reader = cmd.ExecuteReader())
