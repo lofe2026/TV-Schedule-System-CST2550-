@@ -18,10 +18,9 @@ namespace TVSchedulingSystem.Services
             _useDatabase = useDatabase;
         }
 
-        public ScheduleManager()
+        // Creates a schedule manager that uses the database by default.
+        public ScheduleManager() : this(true)
         {
-            _storage = new ScheduleStorage();
-            _repository = new ScheduleRepository();
         }
 
         // ---------------------------------
