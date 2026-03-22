@@ -81,10 +81,8 @@ namespace TVSchedulingSystem.DataStructures
             return false;
         }
 
-        // -------------------------------------
-        // Get Schedule
-        // -------------------------------------
-        public Schedule GetSchedule(int channelId, DateTime startTime)
+        // Returns a schedule for the given channel and start time.
+        public Schedule? GetSchedule(int channelId, DateTime startTime)
         {
             for (int i = 0; i < count; i++)
             {
