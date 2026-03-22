@@ -28,6 +28,7 @@ namespace TVSchedulingSystem.Services
         // ---------------------------------
         public void LoadFromDatabase()
         {
+            _storage.Clear();
             _repository.LoadSchedules(_storage);
         }
 
