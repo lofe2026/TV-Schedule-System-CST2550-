@@ -62,5 +62,23 @@ namespace TVSchedulingSystem.Repositories
                 }
             }
         }
+
+        // Deletes a schedule from the SQL database using its ScheduleID.
+        public void DeleteSchedule(int scheduleId)
+        {
+            using (var conn = Database.GetConnection())
+            {
+                conn.Open();
+
+                string query = "DELETE FROM Schedules WHERE ScheduleID = @ScheduleID";
+
+                using (var cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@ScheduleID", scheduleId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
     }
 }
