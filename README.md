@@ -105,11 +105,11 @@ How to Run
 Default Access
 
 Admin
-Username: admin
+Username: admin, 
 Password: admin123
 
 Manager
-Username: manager
+Username: manager, 
 Password: manager123
 
 Viewer
