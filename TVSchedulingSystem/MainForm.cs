@@ -1,16 +1,29 @@
-﻿using TVSchedulingSystem.Services;
+using System.Data.SqlClient;
+using System.IO;
+using TVSchedulingSystem.Forms;
 using TVSchedulingSystem.Models;
+using TVSchedulingSystem.Services;
 
 namespace TVSchedulingSystem
 {
     public partial class MainForm : Form
     {
         private readonly ScheduleManager _manager;
+        private Button btnSelectImage;
+        private Button btnBack;
+        System.Windows.Forms.Timer timerClock = new System.Windows.Forms.Timer();
         public MainForm()
         {
             InitializeComponent();
 
+
             _manager = new ScheduleManager();
+
+            dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
+
+            timerClock.Interval = 1000;
+            timerClock.Tick += TimerClock_Tick;
+            timerClock.Start();
 
             cmbChannel.Items.Add(1);
             cmbChannel.Items.Add(2);
@@ -25,6 +38,13 @@ namespace TVSchedulingSystem
 
         }
 
+        string selectedImagePath = "";
+
+        private void TimerClock_Tick(object? sender, EventArgs e)
+        {
+            lblClock.Text = DateTime.Now.ToString("HH:mm:ss");
+        }
+
         private void RefreshGrid(int channelId)
         {
             dataGridView1.DataSource = null;
@@ -35,6 +55,7 @@ namespace TVSchedulingSystem
         {
             dataGridView1 = new DataGridView();
             tableLayoutPanel1 = new TableLayoutPanel();
+            btnBack = new Button();
             tableLayoutPanel2 = new TableLayoutPanel();
             cmbChannel = new ComboBox();
             label2 = new Label();
@@ -48,12 +69,19 @@ namespace TVSchedulingSystem
             btnAdd = new Button();
             btnSuggest = new Button();
             btnRemove = new Button();
+            btnSelectImage = new Button();
             label1 = new Label();
+            panel1 = new Panel();
+            picturePreview = new PictureBox();
+            lblProgramTitle = new Label();
+            lblClock = new Label();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)numDuration).BeginInit();
             flowLayoutPanel1.SuspendLayout();
+            panel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)picturePreview).BeginInit();
             SuspendLayout();
             // 
             // dataGridView1
@@ -71,7 +99,6 @@ namespace TVSchedulingSystem
             dataGridView1.RowHeadersWidth = 51;
             dataGridView1.Size = new Size(684, 221);
             dataGridView1.TabIndex = 3;
-            dataGridView1.CellContentClick += dataGridView1_CellContentClick;
             // 
             // tableLayoutPanel1
             // 
@@ -79,10 +106,14 @@ namespace TVSchedulingSystem
             tableLayoutPanel1.ColumnCount = 2;
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 354F));
+            tableLayoutPanel1.Controls.Add(btnBack, 1, 0);
             tableLayoutPanel1.Controls.Add(tableLayoutPanel2, 0, 1);
             tableLayoutPanel1.Controls.Add(flowLayoutPanel1, 0, 2);
             tableLayoutPanel1.Controls.Add(dataGridView1, 0, 3);
             tableLayoutPanel1.Controls.Add(label1, 0, 0);
+            tableLayoutPanel1.Controls.Add(panel1, 1, 1);
+            tableLayoutPanel1.Controls.Add(lblProgramTitle, 1, 2);
+            tableLayoutPanel1.Controls.Add(lblClock, 1, 3);
             tableLayoutPanel1.Dock = DockStyle.Fill;
             tableLayoutPanel1.ForeColor = SystemColors.ActiveCaptionText;
             tableLayoutPanel1.Location = new Point(0, 0);
@@ -95,6 +126,17 @@ namespace TVSchedulingSystem
             tableLayoutPanel1.Size = new Size(1044, 527);
             tableLayoutPanel1.TabIndex = 0;
             tableLayoutPanel1.Paint += tableLayoutPanel1_Paint;
+            // 
+            // btnBack
+            // 
+            btnBack.Dock = DockStyle.Fill;
+            btnBack.Location = new Point(693, 3);
+            btnBack.Name = "btnBack";
+            btnBack.Size = new Size(348, 54);
+            btnBack.TabIndex = 8;
+            btnBack.Text = "Back to Login";
+            btnBack.UseVisualStyleBackColor = true;
+            btnBack.Click += btnBack_Click;
             // 
             // tableLayoutPanel2
             // 
@@ -205,6 +247,7 @@ namespace TVSchedulingSystem
             flowLayoutPanel1.Controls.Add(btnAdd);
             flowLayoutPanel1.Controls.Add(btnSuggest);
             flowLayoutPanel1.Controls.Add(btnRemove);
+            flowLayoutPanel1.Controls.Add(btnSelectImage);
             flowLayoutPanel1.Dock = DockStyle.Top;
             flowLayoutPanel1.Location = new Point(3, 243);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
@@ -252,6 +295,21 @@ namespace TVSchedulingSystem
             btnRemove.UseVisualStyleBackColor = false;
             btnRemove.Click += btnRemove_Click;
             // 
+            // btnSelectImage
+            // 
+            btnSelectImage.BackColor = Color.RoyalBlue;
+            btnSelectImage.Cursor = Cursors.Hand;
+            btnSelectImage.Dock = DockStyle.Fill;
+            btnSelectImage.FlatStyle = FlatStyle.Flat;
+            btnSelectImage.ForeColor = Color.White;
+            btnSelectImage.Location = new Point(471, 3);
+            btnSelectImage.Name = "btnSelectImage";
+            btnSelectImage.Size = new Size(150, 35);
+            btnSelectImage.TabIndex = 4;
+            btnSelectImage.Text = "Select Preview";
+            btnSelectImage.UseVisualStyleBackColor = false;
+            btnSelectImage.Click += btnSelectImage_Click;
+            // 
             // label1
             // 
             label1.AutoSize = true;
@@ -267,6 +325,54 @@ namespace TVSchedulingSystem
             label1.TextAlign = ContentAlignment.MiddleCenter;
             label1.Click += label1_Click;
             // 
+            // panel1
+            // 
+            panel1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            panel1.BackColor = Color.Black;
+            panel1.Controls.Add(picturePreview);
+            panel1.Location = new Point(693, 63);
+            panel1.Name = "panel1";
+            panel1.Size = new Size(348, 174);
+            panel1.TabIndex = 4;
+            // 
+            // picturePreview
+            // 
+            picturePreview.Dock = DockStyle.Fill;
+            picturePreview.Location = new Point(0, 0);
+            picturePreview.Name = "picturePreview";
+            picturePreview.Size = new Size(348, 174);
+            picturePreview.SizeMode = PictureBoxSizeMode.StretchImage;
+            picturePreview.TabIndex = 0;
+            picturePreview.TabStop = false;
+            // 
+            // lblProgramTitle
+            // 
+            lblProgramTitle.AutoSize = true;
+            lblProgramTitle.BackColor = Color.Black;
+            lblProgramTitle.Dock = DockStyle.Top;
+            lblProgramTitle.Font = new Font("Segoe UI", 12F);
+            lblProgramTitle.ForeColor = Color.White;
+            lblProgramTitle.Location = new Point(693, 240);
+            lblProgramTitle.Name = "lblProgramTitle";
+            lblProgramTitle.Size = new Size(348, 28);
+            lblProgramTitle.TabIndex = 5;
+            lblProgramTitle.Text = "Program Preview";
+            lblProgramTitle.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // lblClock
+            // 
+            lblClock.AutoSize = true;
+            lblClock.Dock = DockStyle.Top;
+            lblClock.Font = new Font("Consolas", 28.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            lblClock.ForeColor = Color.Orange;
+            lblClock.Location = new Point(693, 300);
+            lblClock.Name = "lblClock";
+            lblClock.Size = new Size(348, 55);
+            lblClock.TabIndex = 6;
+            lblClock.Text = "00:00:00";
+            lblClock.TextAlign = ContentAlignment.MiddleCenter;
+            lblClock.Click += lblClock_Click;
+            // 
             // MainForm
             // 
             ClientSize = new Size(1044, 527);
@@ -280,12 +386,16 @@ namespace TVSchedulingSystem
             tableLayoutPanel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)numDuration).EndInit();
             flowLayoutPanel1.ResumeLayout(false);
+            panel1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)picturePreview).EndInit();
             ResumeLayout(false);
 
         }
 
         private void MainForm_Load(object? sender, EventArgs e)
         {
+            _manager.LoadFromDatabase();
+
             if (cmbChannel.SelectedItem != null)
             {
                 int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
@@ -368,8 +478,14 @@ namespace TVSchedulingSystem
                     return;
                 }
 
+                if (string.IsNullOrEmpty(selectedImagePath))
+                {
+                    MessageBox.Show("Please select a preview image first.");
+                    return;
+                }
+
                 int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
-                int programId = int.Parse(txtProgramId.Text);
+                string programId = txtProgramId.Text;
                 int duration = (int)numDuration.Value;
                 DateTime start = dtpStartTime.Value;
 
@@ -378,13 +494,24 @@ namespace TVSchedulingSystem
                     channelId,
                     programId,
                     start,
-                    duration);
+                    duration,
+                    selectedImagePath);
 
                 if (result)
                 {
                     MessageBox.Show("Schedule added successfully.");
+
+                    // Update preview
+                    if (!string.IsNullOrEmpty(selectedImagePath))
+                    {
+                        picturePreview.Image = Image.FromFile(selectedImagePath);
+                    }
+
+                    lblProgramTitle.Text = "Program ID: " + programId;
+
                     RefreshGrid(channelId);
                 }
+
                 else
                 {
                     MessageBox.Show("Conflict detected.");
@@ -407,13 +534,10 @@ namespace TVSchedulingSystem
             int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
             int requiredDuration = (int)numDuration.Value;
 
-            var schedules = _manager
-                .GetSchedulesByChannel(channelId)
-                .OrderBy(s => s.StartTime)
-                .ToList();
+            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId);
 
             // If no schedules exist → suggest now
-            if (schedules.Count == 0)
+            if (schedules.Length == 0)
             {
                 DateTime now = DateTime.Now;
 
@@ -432,7 +556,7 @@ namespace TVSchedulingSystem
             }
 
             // Check gaps between schedules
-            for (int i = 0; i < schedules.Count - 1; i++)
+            for (int i = 0; i < schedules.Length - 1; i++)
             {
                 DateTime currentEnd = schedules[i].EndTime;
                 DateTime nextStart = schedules[i + 1].StartTime;
@@ -469,16 +593,77 @@ namespace TVSchedulingSystem
         private Label label3;
         private Label label4;
         private Label label5;
+        private Panel panel1;
+        private PictureBox picturePreview;
+        private Label lblProgramTitle;
+        private Label lblClock;
         private Button btnRemove;
 
-        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
+            if (dataGridView1.CurrentRow == null)
+                return;
 
+            try
+            {
+                string programName = dataGridView1.CurrentRow.Cells["ProgramID"].Value?.ToString();
+                string imagePath = dataGridView1.CurrentRow.Cells["ImagePath"].Value?.ToString();
+
+                lblProgramTitle.Text = programName;
+
+                if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
+                {
+                    picturePreview.Image = new Bitmap(imagePath);
+                }
+                else
+                {
+                    picturePreview.Image = null;
+                }
+            }
+            catch
+            {
+                picturePreview.Image = null;
+            }
         }
 
         private void label2_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void lblClock_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void ShowProgramPreview(string programName)
+        {
+            lblProgramTitle.Text = programName;
+
+            // Optional preview image
+            picturePreview.Image = Image.FromFile("preview.jpg");
+        }
+
+        private void btnSelectImage_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog dialog = new OpenFileDialog();
+
+            dialog.Filter = "Image Files|*.jpg;*.png;*.jpeg";
+
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                selectedImagePath = dialog.FileName;
+
+                picturePreview.Image = Image.FromFile(selectedImagePath);
+            }
+        }
+
+        private void btnBack_Click(object sender, EventArgs e)
+        {
+            LoginForm login = new LoginForm();
+            login.Show();
+
+            this.Close();
         }
     }
 }

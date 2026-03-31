@@ -1,79 +1,149 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using TVSchedulingSystem.Models;
 using TVSchedulingSystem.DataStructures;
+using TVSchedulingSystem.Repositories;
 
 namespace TVSchedulingSystem.Services
 {
     public class ScheduleManager
     {
         private readonly ScheduleStorage _storage;
+        private readonly ScheduleRepository _repository;
+        private readonly bool _useDatabase;
 
-        public ScheduleManager()
+        public ScheduleManager() : this(true)
         {
-            _storage = new ScheduleStorage();
         }
 
-        // -------------------------------------
-        // Add Schedule
-        // -------------------------------------
-        public bool AddSchedule(int scheduleId, int channelId, int programId,
-                        DateTime startTime, int durationMinutes)
+        public ScheduleManager(bool useDatabase)
         {
+            _useDatabase = useDatabase;
+            _storage = new ScheduleStorage();
+            _repository = new ScheduleRepository();
+
+            if (_useDatabase)
+            {
+                LoadFromDatabase();
+            }
+        }
+
+        // ---------------------------------
+        // LOAD DATA FROM DATABASE
+        // ---------------------------------
+        public void LoadFromDatabase()
+        {
+            _storage.Clear();
+            _repository.LoadSchedules(_storage);
+        }
+
+        // ---------------------------------
+        // ADD SCHEDULE
+        // ---------------------------------
+        public bool AddSchedule(
+            int scheduleId,
+            int channelId,
+            string programId,
+            DateTime startTime,
+            int durationMinutes,
+            string imagePath)
+        {
+            if (string.IsNullOrWhiteSpace(programId))
+                throw new ArgumentException("Program ID is required.");
+
             if (durationMinutes <= 0)
                 throw new ArgumentException("Duration must be greater than zero.");
 
-            // 🔥 Normalize startTime (remove seconds & milliseconds)
             startTime = new DateTime(
                 startTime.Year,
                 startTime.Month,
                 startTime.Day,
                 startTime.Hour,
                 startTime.Minute,
-                0);
+                0
+            );
 
             DateTime endTime = startTime.AddMinutes(durationMinutes);
 
-            var schedule = new Schedule(scheduleId, channelId, programId, startTime, endTime);
+            Schedule schedule = new Schedule
+            {
+                ScheduleID = scheduleId,
+                ChannelID = channelId,
+                ProgramID = programId.Trim(),
+                StartTime = startTime,
+                EndTime = endTime,
+                ImagePath = imagePath ?? string.Empty
+            };
 
-            return _storage.AddSchedule(schedule);
+            bool added = _storage.AddSchedule(schedule);
+
+            if (added && _useDatabase)
+            {
+                _repository.InsertSchedule(schedule);
+            }
+
+            return added;
         }
 
-        // -------------------------------------
-        // Remove Schedule
-        // -------------------------------------
+        // ---------------------------------
+        // REMOVE
+        // ---------------------------------
         public bool RemoveSchedule(int channelId, DateTime startTime)
         {
-            return _storage.RemoveSchedule(channelId, startTime);
+            startTime = new DateTime(
+                startTime.Year,
+                startTime.Month,
+                startTime.Day,
+                startTime.Hour,
+                startTime.Minute,
+                0
+            );
+
+            bool removed = _storage.RemoveSchedule(channelId, startTime);
+
+            if (removed && _useDatabase)
+            {
+                _repository.DeleteSchedule(channelId, startTime);
+            }
+
+            return removed;
         }
 
-        // -------------------------------------
-        // Get Schedules By Channel
-        // -------------------------------------
-        public List<Schedule> GetSchedulesByChannel(int channelId)
+        // ---------------------------------
+        // GET SCHEDULE
+        // ---------------------------------
+        public Schedule GetSchedule(int channelId, DateTime startTime)
+        {
+            startTime = new DateTime(
+                startTime.Year,
+                startTime.Month,
+                startTime.Day,
+                startTime.Hour,
+                startTime.Minute,
+                0
+            );
+
+            return _storage.GetSchedule(channelId, startTime);
+        }
+
+        // ---------------------------------
+        // GET SCHEDULES BY CHANNEL
+        // ---------------------------------
+        public Schedule[] GetSchedulesByChannel(int channelId)
         {
             return _storage.GetSchedulesByChannel(channelId);
         }
 
-        // -------------------------------------
-        // Get Specific Schedule
-        // -------------------------------------
-        public Schedule? GetSchedule(int channelId, DateTime startTime)
+        // ---------------------------------
+        // GET ALL SCHEDULES
+        // ---------------------------------
+        public Schedule[] GetAllSchedules()
         {
-            return _storage.GetSchedule(channelId, startTime);
+            return _storage.GetAllSchedules();
         }
 
-        // -------------------------------------
-        // Get All Channel IDs
-        // -------------------------------------
-        public List<int> GetAllChannels()
-        {
-            return _storage.GetAllChannels();
-        }
-
-        // -------------------------------------
-        // Clear All Data
-        // -------------------------------------
+        // ---------------------------------
+        // CLEAR
+        // ---------------------------------
         public void Clear()
         {
             _storage.Clear();
