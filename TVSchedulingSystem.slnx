@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="TVSchedulingSystem.Tests/TVSchedulingSystem.Tests.csproj" />
+  <Project Path="TVSchedulingSystem/TVSchedulingSystem.csproj" />
+</Solution>
