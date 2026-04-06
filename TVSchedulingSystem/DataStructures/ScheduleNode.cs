@@ -1,20 +1,21 @@
-﻿using TVSchedulingSystem.Models;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using TVSchedulingSystem.Models;
 
 namespace TVSchedulingSystem.DataStructures
 {
     public class ScheduleNode
     {
+        public string Key;
         public Schedule Data;
-        public ScheduleNode? Left;
-        public ScheduleNode? Right;
-        public int Height;
+        public ScheduleNode Next;
 
-        public ScheduleNode(Schedule schedule)
+        public ScheduleNode(string key, Schedule data)
         {
-            Data = schedule;
-            Left = null;
-            Right = null;
-            Height = 1;
+            Key = key;
+            Data = data;
+            Next = null;
         }
     }
 }

@@ -1,276 +1,294 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using TVSchedulingSystem.Models;
 
 namespace TVSchedulingSystem.DataStructures
 {
     public class ScheduleStorage
     {
-        // Root of AVL Tree
-        private ScheduleNode root;
+        private ScheduleNode[] buckets;
+        private int size;
 
-        public ScheduleStorage()
+        public ScheduleStorage(int size = 101)
         {
-            root = null;
+            this.size = size;
+            buckets = new ScheduleNode[size];
         }
 
-        // -------------------------------------
-        // Add Schedule
-        // -------------------------------------
+        // =========================
+        // HASH FUNCTION
+        // =========================
+        private int GetIndex(string key)
+        {
+            int hash = 0;
+
+            foreach (char c in key)
+            {
+                hash = (hash * 31 + c) % size;
+            }
+
+            return hash;
+        }
+
+        // =========================
+        // NORMALIZE TIME
+        // =========================
+        private DateTime NormalizeTime(DateTime time)
+        {
+            return new DateTime(
+                time.Year,
+                time.Month,
+                time.Day,
+                time.Hour,
+                time.Minute,
+                0
+            );
+        }
+
+        // =========================
+        // CREATE KEY
+        // =========================
+        private string CreateKey(int channelId, DateTime startTime)
+        {
+            startTime = NormalizeTime(startTime);
+            return channelId + "_" + startTime.ToString("yyyyMMddHHmm");
+        }
+
+        // =========================
+        // CHECK FOR EXACT KEY
+        // =========================
+        private bool KeyExists(string key)
+        {
+            int index = GetIndex(key);
+            ScheduleNode current = buckets[index];
+
+            while (current != null)
+            {
+                if (current.Key == key)
+                    return true;
+
+                current = current.Next;
+            }
+
+            return false;
+        }
+
+        // =========================
+        // CHECK CONFLICT
+        // =========================
+        private bool HasConflict(Schedule schedule)
+        {
+            for (int i = 0; i < size; i++)
+            {
+                ScheduleNode current = buckets[i];
+
+                while (current != null)
+                {
+                    Schedule existing = current.Data;
+
+                    if (existing.ChannelID == schedule.ChannelID &&
+                        schedule.StartTime < existing.EndTime &&
+                        schedule.EndTime > existing.StartTime)
+                    {
+                        return true;
+                    }
+
+                    current = current.Next;
+                }
+            }
+
+            return false;
+        }
+
+        // =========================
+        // ADD SCHEDULE
+        // =========================
         public bool AddSchedule(Schedule schedule)
         {
             if (schedule == null)
                 throw new ArgumentNullException(nameof(schedule));
 
+            schedule.StartTime = NormalizeTime(schedule.StartTime);
+            schedule.EndTime = NormalizeTime(schedule.EndTime);
+
             if (schedule.EndTime <= schedule.StartTime)
                 throw new ArgumentException("End time must be after start time.");
 
-            if (HasConflict(root, schedule))
+            string key = CreateKey(schedule.ChannelID, schedule.StartTime);
+
+            // Prevent exact duplicate slot
+            if (KeyExists(key))
                 return false;
 
-            root = Insert(root, schedule);
+            // Prevent overlap on same channel
+            if (HasConflict(schedule))
+                return false;
+
+            int index = GetIndex(key);
+
+            ScheduleNode newNode = new ScheduleNode(key, schedule);
+            newNode.Next = buckets[index];
+            buckets[index] = newNode;
 
             return true;
         }
 
-        // -------------------------------------
-        // AVL Insert
-        // -------------------------------------
-        private ScheduleNode Insert(ScheduleNode node, Schedule schedule)
-        {
-            if (node == null)
-                return new ScheduleNode(schedule);
-
-            if (schedule.StartTime < node.Data.StartTime)
-                node.Left = Insert(node.Left, schedule);
-            else
-                node.Right = Insert(node.Right, schedule);
-
-            UpdateHeight(node);
-
-            return Balance(node);
-        }
-
-        // -------------------------------------
-        // Remove Schedule
-        // -------------------------------------
+        // =========================
+        // REMOVE
+        // =========================
         public bool RemoveSchedule(int channelId, DateTime startTime)
         {
-            bool removed = false;
-            root = Remove(root, channelId, startTime, ref removed);
-            return removed;
+            string key = CreateKey(channelId, startTime);
+            int index = GetIndex(key);
+
+            ScheduleNode current = buckets[index];
+            ScheduleNode previous = null;
+
+            while (current != null)
+            {
+                if (current.Key == key)
+                {
+                    if (previous == null)
+                        buckets[index] = current.Next;
+                    else
+                        previous.Next = current.Next;
+
+                    return true;
+                }
+
+                previous = current;
+                current = current.Next;
+            }
+
+            return false;
         }
 
-        private ScheduleNode Remove(
-            ScheduleNode node,
-            int channelId,
-            DateTime startTime,
-            ref bool removed)
+        // =========================
+        // GET ONE SCHEDULE
+        // =========================
+        public Schedule GetSchedule(int channelId, DateTime startTime)
         {
-            if (node == null)
-                return null;
+            string key = CreateKey(channelId, startTime);
+            int index = GetIndex(key);
 
-            if (startTime < node.Data.StartTime)
+            ScheduleNode current = buckets[index];
+
+            while (current != null)
             {
-                node.Left = Remove(node.Left, channelId, startTime, ref removed);
+                if (current.Key == key)
+                    return current.Data;
+
+                current = current.Next;
             }
-            else if (startTime > node.Data.StartTime)
+
+            return null;
+        }
+
+        // =========================
+        // GET SCHEDULES BY CHANNEL
+        // =========================
+        public Schedule[] GetSchedulesByChannel(int channelId)
+        {
+            Schedule[] temp = new Schedule[10];
+            int count = 0;
+
+            for (int i = 0; i < size; i++)
             {
-                node.Right = Remove(node.Right, channelId, startTime, ref removed);
-            }
-            else
-            {
-                if (node.Data.ChannelID == channelId)
+                ScheduleNode current = buckets[i];
+
+                while (current != null)
                 {
-                    removed = true;
+                    if (current.Data.ChannelID == channelId)
+                    {
+                        if (count >= temp.Length)
+                        {
+                            temp = ResizeArray(temp);
+                        }
 
-                    if (node.Left == null)
-                        return node.Right;
+                        temp[count] = current.Data;
+                        count++;
+                    }
 
-                    if (node.Right == null)
-                        return node.Left;
-
-                    ScheduleNode min = FindMin(node.Right);
-                    node.Data = min.Data;
-                    node.Right = Remove(node.Right, min.Data.ChannelID, min.Data.StartTime, ref removed);
+                    current = current.Next;
                 }
             }
 
-            UpdateHeight(node);
+            Schedule[] result = new Schedule[count];
 
-            return Balance(node);
-        }
-
-        // -------------------------------------
-        // Find Minimum Node
-        // -------------------------------------
-        private ScheduleNode FindMin(ScheduleNode node)
-        {
-            while (node.Left != null)
-                node = node.Left;
-
-            return node;
-        }
-
-        // -------------------------------------
-        // AVL Utilities
-        // -------------------------------------
-
-        private int Height(ScheduleNode node)
-        {
-            return node == null ? 0 : node.Height;
-        }
-
-        private void UpdateHeight(ScheduleNode node)
-        {
-            node.Height = 1 + Math.Max(Height(node.Left), Height(node.Right));
-        }
-
-        private int BalanceFactor(ScheduleNode node)
-        {
-            return Height(node.Left) - Height(node.Right);
-        }
-
-        private ScheduleNode Balance(ScheduleNode node)
-        {
-            int balance = BalanceFactor(node);
-
-            // Left heavy
-            if (balance > 1)
+            for (int i = 0; i < count; i++)
             {
-                if (BalanceFactor(node.Left) < 0)
-                    node.Left = RotateLeft(node.Left);
-
-                return RotateRight(node);
+                result[i] = temp[i];
             }
 
-            // Right heavy
-            if (balance < -1)
-            {
-                if (BalanceFactor(node.Right) > 0)
-                    node.Right = RotateRight(node.Right);
-
-                return RotateLeft(node);
-            }
-
-            return node;
-        }
-
-        private ScheduleNode RotateLeft(ScheduleNode x)
-        {
-            ScheduleNode y = x.Right;
-            x.Right = y.Left;
-            y.Left = x;
-
-            UpdateHeight(x);
-            UpdateHeight(y);
-
-            return y;
-        }
-
-        private ScheduleNode RotateRight(ScheduleNode y)
-        {
-            ScheduleNode x = y.Left;
-            y.Left = x.Right;
-            x.Right = y;
-
-            UpdateHeight(y);
-            UpdateHeight(x);
-
-            return x;
-        }
-
-        // -------------------------------------
-        // Get Schedules By Channel
-        // -------------------------------------
-        public List<Schedule> GetSchedulesByChannel(int channelId)
-        {
-            var result = new List<Schedule>();
-
-            TraverseChannel(root, channelId, result);
+            Array.Sort(result, (a, b) => a.StartTime.CompareTo(b.StartTime));
 
             return result;
         }
 
-        private void TraverseChannel(ScheduleNode node, int channelId, List<Schedule> list)
+        // =========================
+        // GET ALL SCHEDULES
+        // =========================
+        public Schedule[] GetAllSchedules()
         {
-            if (node == null)
-                return;
+            Schedule[] temp = new Schedule[10];
+            int count = 0;
 
-            TraverseChannel(node.Left, channelId, list);
+            for (int i = 0; i < size; i++)
+            {
+                ScheduleNode current = buckets[i];
 
-            if (node.Data.ChannelID == channelId)
-                list.Add(node.Data);
+                while (current != null)
+                {
+                    if (count >= temp.Length)
+                    {
+                        temp = ResizeArray(temp);
+                    }
 
-            TraverseChannel(node.Right, channelId, list);
+                    temp[count] = current.Data;
+                    count++;
+                    current = current.Next;
+                }
+            }
+
+            Schedule[] result = new Schedule[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                result[i] = temp[i];
+            }
+
+            Array.Sort(result, (a, b) =>
+            {
+                int channelCompare = a.ChannelID.CompareTo(b.ChannelID);
+                if (channelCompare != 0)
+                    return channelCompare;
+
+                return a.StartTime.CompareTo(b.StartTime);
+            });
+
+            return result;
         }
 
-        // -------------------------------------
-        // Get Schedule By Start Time
-        // -------------------------------------
-        public Schedule? GetSchedule(int channelId, DateTime startTime)
+        // =========================
+        // RESIZE TEMP ARRAY
+        // =========================
+        private Schedule[] ResizeArray(Schedule[] oldArray)
         {
-            return Search(root, channelId, startTime);
+            Schedule[] newArray = new Schedule[oldArray.Length * 2];
+
+            for (int i = 0; i < oldArray.Length; i++)
+            {
+                newArray[i] = oldArray[i];
+            }
+
+            return newArray;
         }
 
-        private Schedule? Search(ScheduleNode node, int channelId, DateTime startTime)
-        {
-            if (node == null)
-                return null;
-
-            if (node.Data.StartTime == startTime && node.Data.ChannelID == channelId)
-                return node.Data;
-
-            if (startTime < node.Data.StartTime)
-                return Search(node.Left, channelId, startTime);
-
-            return Search(node.Right, channelId, startTime);
-        }
-
-        // -------------------------------------
-        // Conflict Detection
-        // -------------------------------------
-        private bool HasConflict(ScheduleNode node, Schedule newSchedule)
-        {
-            if (node == null)
-                return false;
-
-            if (newSchedule.StartTime < node.Data.EndTime &&
-                newSchedule.EndTime > node.Data.StartTime)
-                return true;
-
-            return HasConflict(node.Left, newSchedule) ||
-                   HasConflict(node.Right, newSchedule);
-        }
-
-        // -------------------------------------
-        // Get All Channels
-        // -------------------------------------
-        public List<int> GetAllChannels()
-        {
-            var channels = new List<int>();
-            CollectChannels(root, channels);
-            return channels;
-        }
-
-        private void CollectChannels(ScheduleNode node, List<int> list)
-        {
-            if (node == null)
-                return;
-
-            if (!list.Contains(node.Data.ChannelID))
-                list.Add(node.Data.ChannelID);
-
-            CollectChannels(node.Left, list);
-            CollectChannels(node.Right, list);
-        }
-
-        // -------------------------------------
-        // Clear Storage
-        // -------------------------------------
+        // =========================
+        // CLEAR
+        // =========================
         public void Clear()
         {
-            root = null;
+            buckets = new ScheduleNode[size];
         }
     }
 }

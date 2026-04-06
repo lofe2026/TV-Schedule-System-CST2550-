@@ -12,79 +12,177 @@ namespace TVSchedulingSystem.Tests
         [TestInitialize]
         public void Setup()
         {
-            _manager = new ScheduleManager();
+            // 🚀 IMPORTANT: disable database during tests
+            _manager = new ScheduleManager(false);
         }
 
-        // -------------------------------------------------
+        // -----------------------------------------
         // TEST 1: Add schedule without conflict
-        // -------------------------------------------------
+        // -----------------------------------------
         [TestMethod]
         public void AddSchedule_NoConflict_ShouldReturnTrue()
         {
-            var result = _manager.AddSchedule(
-                scheduleId: 1,
-                channelId: 1,
-                programId: 100,
-                startTime: new DateTime(2025, 1, 1, 10, 0, 0),
-                durationMinutes: 60);
+            bool result = _manager.AddSchedule(
+                1,
+                1,
+                "News",
+                new DateTime(2025, 1, 1, 10, 0, 0),
+                60,
+                "test.jpg"
+            );
 
             Assert.IsTrue(result);
         }
 
-        // -------------------------------------------------
-        // TEST 2: Add schedule with conflict
-        // -------------------------------------------------
+        // -----------------------------------------
+        // TEST 2: Conflict detection
+        // -----------------------------------------
         [TestMethod]
         public void AddSchedule_WithConflict_ShouldReturnFalse()
         {
             _manager.AddSchedule(
-                1, 1, 100,
+                1,
+                1,
+                "News",
                 new DateTime(2025, 1, 1, 10, 0, 0),
-                60);
+                60,
+                "test.jpg"
+            );
 
-            var result = _manager.AddSchedule(
-                2, 1, 101,
-                new DateTime(2025, 1, 1, 10, 30, 0), // Overlaps
-                60);
+            bool result = _manager.AddSchedule(
+                2,
+                1,
+                "Movie",
+                new DateTime(2025, 1, 1, 10, 30, 0), // overlap
+                60,
+                "test.jpg"
+            );
 
             Assert.IsFalse(result);
         }
 
-        // -------------------------------------------------
+        // -----------------------------------------
         // TEST 3: Remove schedule
-        // -------------------------------------------------
+        // -----------------------------------------
         [TestMethod]
         public void RemoveSchedule_ShouldReturnTrue()
         {
             _manager.AddSchedule(
-                1, 1, 100,
-                new DateTime(2025, 1, 1, 10, 0, 0),
-                60);
-
-            var result = _manager.RemoveSchedule(
                 1,
-                new DateTime(2025, 1, 1, 10, 0, 0));
+                1,
+                "News",
+                new DateTime(2025, 1, 1, 10, 0, 0),
+                60,
+                "test.jpg"
+            );
+
+            bool result = _manager.RemoveSchedule(
+                1,
+                new DateTime(2025, 1, 1, 10, 0, 0)
+            );
 
             Assert.IsTrue(result);
         }
 
-        // -------------------------------------------------
-        // TEST 4: Get schedule by time
-        // -------------------------------------------------
+        // -----------------------------------------
+        // TEST 4: Get schedule
+        // -----------------------------------------
         [TestMethod]
         public void GetSchedule_ShouldReturnCorrectSchedule()
         {
-            var startTime = new DateTime(2025, 1, 1, 10, 0, 0);
+            DateTime startTime = new DateTime(2025, 1, 1, 10, 0, 0);
 
             _manager.AddSchedule(
-                1, 1, 100,
+                1,
+                1,
+                "News",
                 startTime,
-                60);
+                60,
+                "test.jpg"
+            );
 
             var schedule = _manager.GetSchedule(1, startTime);
 
             Assert.IsNotNull(schedule);
-            Assert.AreEqual(100, schedule.ProgramID);
+            Assert.AreEqual("News", schedule.ProgramID);
         }
+
+        [TestMethod]
+        public void Clear_ShouldRemoveAllSchedules()
+        {
+            _manager.AddSchedule(1, 1, "News", new DateTime(2025, 1, 1, 10, 0, 0), 60, "img");
+
+            _manager.Clear();
+
+            var result = _manager.GetAllSchedules();
+
+            Assert.AreEqual(0, result.Length);
+        }
+
+
+        [TestMethod]
+        public void RemoveSchedule_NotExisting_ShouldReturnFalse()
+        {
+            bool result = _manager.RemoveSchedule(
+                1,
+                new DateTime(2025, 1, 1, 10, 0, 0)
+            );
+
+            Assert.IsFalse(result);
+        }
+
+        [TestMethod]
+        public void AddSchedule_SameTimeDifferentChannel_ShouldSucceed()
+        {
+            bool first = _manager.AddSchedule(
+                1, 1, "News",
+                new DateTime(2025, 1, 1, 10, 0, 0),
+                60, "img"
+            );
+
+            bool second = _manager.AddSchedule(
+                2, 2, "Movie",
+                new DateTime(2025, 1, 1, 10, 0, 0),
+                60, "img"
+            );
+
+            Assert.IsTrue(first);
+            Assert.IsTrue(second);
+        }
+
+        [TestMethod]
+        public void AddSchedule_DuplicateSlot_ShouldFail()
+        {
+            _manager.AddSchedule(
+                1, 1, "News",
+                new DateTime(2025, 1, 1, 10, 0, 0),
+                60, "img"
+            );
+
+            bool result = _manager.AddSchedule(
+                2, 1, "Duplicate",
+                new DateTime(2025, 1, 1, 10, 0, 0),
+                60, "img"
+            );
+
+            Assert.IsFalse(result);
+        }
+
+        [TestMethod]
+        public void AddSchedule_InvalidDuration_ShouldThrowException()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                _manager.AddSchedule(
+                    1,
+                    1,
+                    "Invalid",
+                    new DateTime(2025, 1, 1, 10, 0, 0),
+                    0,
+                    "img"
+                )
+            );
+        }
+
+
     }
 }
