@@ -64,6 +64,7 @@
             // dataGridView1
             // 
             dataGridView1.BackgroundColor = SystemColors.Control;
+            dataGridView1.BorderStyle = BorderStyle.None;
             dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dataGridView1.Dock = DockStyle.Fill;
             dataGridView1.Location = new Point(3, 372);
@@ -71,7 +72,6 @@
             dataGridView1.RowHeadersWidth = 51;
             dataGridView1.Size = new Size(885, 364);
             dataGridView1.TabIndex = 0;
-            dataGridView1.CellContentClick += dataGridView1_CellContentClick;
             dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
             // 
             // tableLayoutPanel1
