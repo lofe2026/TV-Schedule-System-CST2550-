@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\mbhoy\\OneDrive\\Desktop\\TVSchedulingSystem\\TVSchedulingSystem\\TVSchedulingSystem.csproj",
+      "projectUniqueName": "C:\\Users\\mbhoy\\OneDrive\\Documents\\GitHub\\TV-Schedule-System-CST2550-\\TVSchedulingSystem\\TVSchedulingSystem.csproj",
       "projectName": "TVSchedulingSystem",
-      "projectPath": "C:\\Users\\mbhoy\\OneDrive\\Desktop\\TVSchedulingSystem\\TVSchedulingSystem\\TVSchedulingSystem.csproj",
+      "projectPath": "C:\\Users\\mbhoy\\OneDrive\\Documents\\GitHub\\TV-Schedule-System-CST2550-\\TVSchedulingSystem\\TVSchedulingSystem.csproj",
       "packagesPath": "C:\\Users\\mbhoy\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\mbhoy\\OneDrive\\Desktop\\TVSchedulingSystem\\TVSchedulingSystem\\obj\\",
+      "outputPath": "C:\\Users\\mbhoy\\OneDrive\\Documents\\GitHub\\TV-Schedule-System-CST2550-\\TVSchedulingSystem\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

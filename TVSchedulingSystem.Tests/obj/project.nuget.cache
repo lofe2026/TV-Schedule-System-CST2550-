@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "xe+lpqgJqbs=",
+  "dgSpecHash": "hytPVIhuz9k=",
   "success": true,
-  "projectFilePath": "C:\\Users\\mbhoy\\OneDrive\\Desktop\\TVSchedulingSystem\\TVSchedulingSystem.Tests\\TVSchedulingSystem.Tests.csproj",
+  "projectFilePath": "C:\\Users\\mbhoy\\OneDrive\\Documents\\GitHub\\TV-Schedule-System-CST2550-\\TVSchedulingSystem.Tests\\TVSchedulingSystem.Tests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\mbhoy\\.nuget\\packages\\microsoft.applicationinsights\\2.23.0\\microsoft.applicationinsights.2.23.0.nupkg.sha512",
     "C:\\Users\\mbhoy\\.nuget\\packages\\microsoft.codecoverage\\18.0.0\\microsoft.codecoverage.18.0.0.nupkg.sha512",
