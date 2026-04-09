@@ -2,7 +2,7 @@
 
 ## Overview
 
-The TV Program Scheduling System is a Windows Forms application developed using C# .NET. The purpose of the system is to manage and display TV program schedules efficiently. It allows users to add, remove, and view schedules while ensuring that no time conflicts occur within the same channel.
+The TV Program Scheduling System is a Windows Forms application developed using C# .NET. It is designed to manage and display TV program schedules efficiently. The system allows users to add, remove, and view schedules while ensuring that no time conflicts occur within the same channel.
 
 The system includes multiple user roles:
 
@@ -36,22 +36,20 @@ The system supports efficient search operations, including:
 * Retrieving schedules by channel
 * Retrieving a specific schedule using channel and time
 
-### AI Assistance
+### AI Assistant
 
-The system includes simple AI assistant features to support scheduling decisions and improve usability.
+The system includes an AI assistant integrated into the MainForm chat interface to support scheduling decisions.
 
-The AI features are:
+The AI assistant provides:
 
-* **AI Suggest Slot**
-  This feature suggests the next available valid time slot for a programme on the selected channel. It checks existing schedules and finds the earliest free slot where the new programme can fit without causing a conflict.
+* Conflict explanation
+* Slot suggestion
+* Channel recommendation
+* Natural language interaction
 
-* **AI Recommend Channel**
-  This feature compares available slots across channels and recommends the best channel for the programme. It selects the channel that can accommodate the programme at the earliest possible valid time.
+The AI is implemented using an AIService class, which combines user input with real-time schedule data and sends structured requests to an external AI model. Responses are displayed in the chat panel within the application.
 
-* **AI Output Panel**
-  The system provides an AI output area in the interface where suggestions and recommendations are displayed clearly to the user. This helps users understand why a slot or channel was suggested.
-
-These AI functions do not use external libraries or machine learning models. Instead, they are rule-based intelligent features implemented in C# to improve the scheduling process.
+The AI assistant acts as a decision-support feature and does not automatically modify schedules.
 
 ### Viewer Mode
 
@@ -64,16 +62,16 @@ The application uses Windows Forms and includes:
 * A DataGridView to display schedules
 * A preview section for program images
 * A digital clock
-* Navigation buttons to move between forms
-* An AI output section for scheduling suggestions and recommendations
+* Navigation buttons between forms
+* A chat-based AI panel for scheduling assistance
 
 ## Data Structure
 
 A custom hash table with separate chaining is implemented to store schedules.
 
-The key used in the hash table is a combination of Channel ID and Start Time.
+The key is a combination of Channel ID and Start Time.
 
-The hash table was selected because it provides efficient access to data and improves the performance of search operations compared to linear structures.
+This structure was chosen because it provides efficient access and improves performance compared to linear structures.
 
 ### Time Complexity
 
@@ -86,69 +84,62 @@ The hash table was selected because it provides efficient access to data and imp
 
 The system uses SQL Server LocalDB to store data.
 
-The main tables are:
+Main tables:
 
 * Users
 * Schedule
 
-A SQL script file (`database.sql`) is included to create and populate the database.
+A SQL script file (database.sql) is included to create and populate the database.
 
 ## Testing
 
 Unit testing is implemented using MSTest.
 
-The following functionalities are tested:
+Tested functionalities include:
 
 * Adding schedules
 * Detecting scheduling conflicts
 * Removing schedules
-* Searching for schedules
+* Searching schedules
 * Retrieving schedules by channel
 * Handling invalid inputs and edge cases
-* AI suggestion and recommendation logic
 
 ## How to Run
 
 1. Open the solution in Visual Studio
 2. Ensure SQL Server LocalDB is installed
-3. Execute the `database.sql` script to create the database
+3. Execute the database.sql script
 4. Build the solution
 5. Run the application
 
 ## Default Access
 
-### Admin
-
+Admin
 Username: admin
 Password: admin123
 
-### Manager
-
+Manager
 Username: manager
 Password: manager123
 
-### Viewer
-
-Accessible through the Viewer option without login
-Session automatically expires after 30 minutes
+Viewer
+Accessible without login (30-minute session limit)
 
 ## Project Structure
 
-* Models: Contains data models such as Schedule, User, Channel, and TVProgram
-* DataStructures: Contains the custom hash table implementation
-* Services: Contains business logic
-* Repositories: Handles database operations
-* Forms: Contains all user interface forms
-* Tests: Contains MSTest unit tests
+* Models – Data models such as Schedule, User, Channel, and Program
+* DataStructures – Custom hash table implementation
+* Services – Business logic and AI service
+* Repositories – Database operations
+* Forms – User interface
+* Tests – MSTest unit tests
 
 ## Notes
 
-The system does not use any third-party libraries. All data structures and algorithms are implemented manually. The application follows a layered structure where the user interface communicates with the service layer, which interacts with the data structure and database.
+The system does not use any third-party libraries. All data structures and algorithms are implemented manually. The application follows a layered architecture where the user interface communicates with the service layer, which interacts with the data structure and database.
 
-The AI features are implemented using rule-based logic. Their purpose is to assist users in making better scheduling decisions by suggesting suitable time slots and recommending the most appropriate channel.
+The AI assistant enhances usability by providing intelligent scheduling support while keeping the core scheduling logic unchanged.
 
 ## Conclusion
 
-The system demonstrates the use of custom data structures, efficient search algorithms, database integration, unit testing, and intelligent scheduling support. It provides a functional scheduling application with role-based access, a user-friendly interface, and AI-assisted features that improve the efficiency of schedule planning.
-
-
+The system demonstrates the use of custom data structures, efficient scheduling algorithms, database integration, and unit testing. The addition of an AI assistant improves user interaction and supports better scheduling decisions, making the application more practical and user friendly.
