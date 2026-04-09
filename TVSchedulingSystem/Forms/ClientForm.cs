@@ -1,16 +1,21 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using TVSchedulingSystem.Services;
 using TVSchedulingSystem.Models;
+using TVSchedulingSystem.Repositories;
+using TVSchedulingSystem.Services;
 
 namespace TVSchedulingSystem.Forms
 {
     public partial class ClientForm : Form
     {
-        private ScheduleManager _manager;
+        private readonly ScheduleManager _manager;
+        private readonly ProgramRepository _programRepository;
+
+        private List<ProgramItem> _programItems = new List<ProgramItem>();
         private System.Windows.Forms.Timer clockTimer;
 
         public ClientForm()
@@ -18,24 +23,21 @@ namespace TVSchedulingSystem.Forms
             InitializeComponent();
 
             _manager = new ScheduleManager();
-            _manager.LoadFromDatabase();
+            _programRepository = new ProgramRepository();
 
-            this.Load += ClientForm_Load;
+            Load += ClientForm_Load;
             dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
+            cmbChannel.SelectedIndexChanged += cmbChannel_SelectedIndexChanged;
 
             StartClock();
         }
 
-        // -------------------------------------
-        // CLOCK
-        // -------------------------------------
         private void StartClock()
         {
             clockTimer = new System.Windows.Forms.Timer();
             clockTimer.Interval = 1000;
             clockTimer.Tick += ClockTimer_Tick;
             clockTimer.Start();
-
             UpdateClock();
         }
 
@@ -49,19 +51,27 @@ namespace TVSchedulingSystem.Forms
             lblClock.Text = DateTime.Now.ToString("HH:mm:ss");
         }
 
-        // -------------------------------------
-        // LOAD FORM
-        // -------------------------------------
         private void ClientForm_Load(object sender, EventArgs e)
         {
-            cmbChannel.Items.Clear();
-            cmbChannel.Items.Add(1);
-            cmbChannel.Items.Add(2);
-            cmbChannel.Items.Add(3);
+            try
+            {
+                _manager.LoadFromDatabase();
+                _programItems = _programRepository.GetPrograms();
 
-            cmbChannel.SelectedIndex = 0;
+                cmbChannel.Items.Clear();
+                cmbChannel.Items.Add(1);
+                cmbChannel.Items.Add(2);
+                cmbChannel.Items.Add(3);
 
-            LoadSchedules();
+                if (cmbChannel.Items.Count > 0)
+                    cmbChannel.SelectedIndex = 0;
+
+                LoadSchedules();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading ClientForm: " + ex.Message);
+            }
         }
 
         private void cmbChannel_SelectedIndexChanged(object sender, EventArgs e)
@@ -69,9 +79,6 @@ namespace TVSchedulingSystem.Forms
             LoadSchedules();
         }
 
-        // -------------------------------------
-        // LOAD SCHEDULES (USER FRIENDLY)
-        // -------------------------------------
         private void LoadSchedules()
         {
             if (cmbChannel.SelectedItem == null)
@@ -94,40 +101,43 @@ namespace TVSchedulingSystem.Forms
             dataGridView1.MultiSelect = false;
             dataGridView1.RowHeadersVisible = false;
             dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridView1.RowTemplate.Height = 70;
 
-            // USER FRIENDLY COLUMNS
             dataGridView1.Columns.Add("ProgramName", "Program Name");
             dataGridView1.Columns.Add("ChannelName", "Channel");
             dataGridView1.Columns.Add("StartDisplay", "Starts At");
             dataGridView1.Columns.Add("EndDisplay", "Ends At");
             dataGridView1.Columns.Add("DurationDisplay", "Duration");
 
-            // IMAGE COLUMN
-            DataGridViewImageColumn imgCol = new DataGridViewImageColumn();
-            imgCol.Name = "Preview";
-            imgCol.HeaderText = "Preview";
-            imgCol.ImageLayout = DataGridViewImageCellLayout.Zoom;
+            DataGridViewImageColumn imgCol = new DataGridViewImageColumn
+            {
+                Name = "Preview",
+                HeaderText = "Preview",
+                ImageLayout = DataGridViewImageCellLayout.Zoom
+            };
             dataGridView1.Columns.Add(imgCol);
 
-            // hidden image path
             dataGridView1.Columns.Add("ImagePath", "ImagePath");
             dataGridView1.Columns["ImagePath"].Visible = false;
 
-            for (int i = 0; i < schedules.Length; i++)
+            foreach (Schedule s in schedules)
             {
-                Schedule s = schedules[i];
+                ProgramItem matchedProgram = _programItems.FirstOrDefault(
+                    p => string.Equals(
+                        p.ProgramCode?.Trim(),
+                        s.ProgramID?.Trim(),
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
 
-                string programName = string.IsNullOrWhiteSpace(s.ProgramID)
-                    ? "Unknown Program"
-                    : s.ProgramID;
+                string programName = matchedProgram != null
+                    ? matchedProgram.ProgramName
+                    : (string.IsNullOrWhiteSpace(s.ProgramID) ? "Unknown Program" : s.ProgramID);
 
                 string channelName = "Channel " + s.ChannelID;
-
                 string startDisplay = s.StartTime.ToString("dd/MM/yyyy HH:mm");
                 string endDisplay = s.EndTime.ToString("dd/MM/yyyy HH:mm");
-
-                TimeSpan duration = s.EndTime - s.StartTime;
-                string durationDisplay = ((int)duration.TotalMinutes) + " mins";
+                string durationDisplay = ((int)(s.EndTime - s.StartTime).TotalMinutes) + " mins";
 
                 Image img = LoadImageSafe(s.ImagePath);
 
@@ -145,45 +155,64 @@ namespace TVSchedulingSystem.Forms
             if (dataGridView1.Rows.Count > 0)
             {
                 dataGridView1.Rows[0].Selected = true;
+                UpdatePreviewFromSelectedRow();
+            }
+            else
+            {
+                ClearPreview();
             }
         }
 
-        // -------------------------------------
-        // IMAGE PREVIEW
-        // -------------------------------------
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
+        {
+            UpdatePreviewFromSelectedRow();
+        }
+
+        private void UpdatePreviewFromSelectedRow()
         {
             if (dataGridView1.CurrentRow == null)
                 return;
 
             try
             {
-                string imagePath = dataGridView1.CurrentRow.Cells["ImagePath"].Value?.ToString();
+                string programName = Convert.ToString(dataGridView1.CurrentRow.Cells["ProgramName"].Value);
+                string imagePath = Convert.ToString(dataGridView1.CurrentRow.Cells["ImagePath"].Value);
 
-                if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
-                {
-                    picturePreview.Image = LoadImageSafe(imagePath);
-                }
-                else
-                {
-                    picturePreview.Image = null;
-                }
+                lblProgramTitle.Text = string.IsNullOrWhiteSpace(programName)
+                    ? "Program Preview"
+                    : programName;
+
+                picturePreview.Image = LoadImageSafe(imagePath);
             }
             catch
             {
-                picturePreview.Image = null;
+                ClearPreview();
             }
         }
 
-        private Image LoadImageSafe(string path)
+        private void ClearPreview()
         {
-            if (string.IsNullOrEmpty(path) || !File.Exists(path))
-                return null;
+            lblProgramTitle.Text = "Program Preview";
 
+            if (picturePreview.Image != null)
+            {
+                Image oldImage = picturePreview.Image;
+                picturePreview.Image = null;
+                oldImage.Dispose();
+            }
+        }
+
+        private Image LoadImageSafe(string imagePath)
+        {
             try
             {
-                using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read))
-                using (var temp = Image.FromStream(stream))
+                string resolvedPath = ResolveImagePath(imagePath);
+
+                if (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+                    return null;
+
+                using (FileStream stream = new FileStream(resolvedPath, FileMode.Open, FileAccess.Read))
+                using (Image temp = Image.FromStream(stream))
                 {
                     return new Bitmap(temp);
                 }
@@ -194,15 +223,45 @@ namespace TVSchedulingSystem.Forms
             }
         }
 
-        // -------------------------------------
-        // CLEANUP
-        // -------------------------------------
+        private string ResolveImagePath(string imagePath)
+        {
+            if (string.IsNullOrWhiteSpace(imagePath))
+                return string.Empty;
+
+            if (Path.IsPathRooted(imagePath))
+                return imagePath;
+
+            string startupPath = Application.StartupPath;
+            string combinedPath = Path.Combine(startupPath, imagePath);
+            if (File.Exists(combinedPath))
+                return combinedPath;
+
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            combinedPath = Path.Combine(baseDirectory, imagePath);
+            if (File.Exists(combinedPath))
+                return combinedPath;
+
+            string currentDirectory = Directory.GetCurrentDirectory();
+            combinedPath = Path.Combine(currentDirectory, imagePath);
+            if (File.Exists(combinedPath))
+                return combinedPath;
+
+            return string.Empty;
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             if (clockTimer != null)
             {
                 clockTimer.Stop();
                 clockTimer.Dispose();
+            }
+
+            if (picturePreview.Image != null)
+            {
+                Image oldImage = picturePreview.Image;
+                picturePreview.Image = null;
+                oldImage.Dispose();
             }
 
             base.OnFormClosing(e);
@@ -212,7 +271,7 @@ namespace TVSchedulingSystem.Forms
         {
             LoginForm login = new LoginForm();
             login.Show();
-            this.Close();
+            Close();
         }
     }
 }

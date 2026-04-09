@@ -22,6 +22,10 @@ namespace TVSchedulingSystem
 
         private Button btnBack;
         private Button btnSendAi;
+        private Button btnSelectPreview;
+        private Button btnAddProgram;
+
+        private string _selectedPreviewPath = string.Empty;
 
         private System.Windows.Forms.Timer timerClock = new System.Windows.Forms.Timer();
 
@@ -89,6 +93,8 @@ namespace TVSchedulingSystem
             btnRemove.Click += btnRemove_Click;
             btnSendAi.Click += btnSendAi_Click;
             btnBack.Click += btnBack_Click;
+            btnSelectPreview.Click += btnSelectPreview_Click;
+            btnAddProgram.Click += btnAddProgram_Click;
             txtChatInput.KeyDown += txtChatInput_KeyDown;
         }
 
@@ -115,6 +121,8 @@ namespace TVSchedulingSystem
             btnAdd = new Button();
             btnSuggest = new Button();
             btnRemove = new Button();
+            btnSelectPreview = new Button();
+            btnAddProgram = new Button();
             lblProgramTitle = new Label();
             lblClock = new Label();
             panelAi = new Panel();
@@ -353,6 +361,8 @@ namespace TVSchedulingSystem
             flowLayoutPanel1.Controls.Add(btnAdd);
             flowLayoutPanel1.Controls.Add(btnSuggest);
             flowLayoutPanel1.Controls.Add(btnRemove);
+            flowLayoutPanel1.Controls.Add(btnSelectPreview);
+            flowLayoutPanel1.Controls.Add(btnAddProgram);
             flowLayoutPanel1.Dock = DockStyle.Fill;
             flowLayoutPanel1.Location = new Point(3, 243);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
@@ -394,6 +404,30 @@ namespace TVSchedulingSystem
             btnRemove.TabIndex = 2;
             btnRemove.Text = "Remove";
             btnRemove.UseVisualStyleBackColor = false;
+            // 
+            // btnSelectPreview
+            // 
+            btnSelectPreview.BackColor = Color.RoyalBlue;
+            btnSelectPreview.FlatStyle = FlatStyle.Flat;
+            btnSelectPreview.ForeColor = Color.White;
+            btnSelectPreview.Location = new Point(405, 3);
+            btnSelectPreview.Name = "btnSelectPreview";
+            btnSelectPreview.Size = new Size(128, 35);
+            btnSelectPreview.TabIndex = 3;
+            btnSelectPreview.Text = "Select Preview";
+            btnSelectPreview.UseVisualStyleBackColor = false;
+            // 
+            // btnAddProgram
+            // 
+            btnAddProgram.BackColor = Color.MediumSeaGreen;
+            btnAddProgram.FlatStyle = FlatStyle.Flat;
+            btnAddProgram.ForeColor = Color.White;
+            btnAddProgram.Location = new Point(539, 3);
+            btnAddProgram.Name = "btnAddProgram";
+            btnAddProgram.Size = new Size(128, 35);
+            btnAddProgram.TabIndex = 4;
+            btnAddProgram.Text = "Add Program";
+            btnAddProgram.UseVisualStyleBackColor = false;
             // 
             // lblProgramTitle
             // 
@@ -539,6 +573,7 @@ namespace TVSchedulingSystem
                 txtProgramId.Text = selectedProgram.ProgramCode;
                 lblProgramTitle.Text = selectedProgram.ProgramName;
                 SetPicturePreview(selectedProgram.ImagePath);
+                _selectedPreviewPath = string.Empty;
             }
         }
 
@@ -646,13 +681,17 @@ namespace TVSchedulingSystem
                 DateTime requestedStart = NormalizeToMinute(dtpStartTime.Value);
                 int scheduleId = GetNextScheduleId();
 
+                string previewPathToUse = !string.IsNullOrWhiteSpace(_selectedPreviewPath)
+                    ? _selectedPreviewPath
+                    : selectedProgram.ImagePath;
+
                 bool result = _manager.AddSchedule(
                     scheduleId,
                     channelId,
                     selectedProgram.ProgramCode,
                     requestedStart,
                     duration,
-                    selectedProgram.ImagePath
+                    previewPathToUse
                 );
 
                 if (result)
@@ -660,6 +699,7 @@ namespace TVSchedulingSystem
                     MessageBox.Show("Schedule added successfully.");
                     RefreshGrid(channelId);
                     numDuration.Value = 30;
+                    _selectedPreviewPath = string.Empty;
                 }
                 else
                 {
@@ -731,6 +771,89 @@ namespace TVSchedulingSystem
             catch (Exception ex)
             {
                 MessageBox.Show("Error: " + ex.Message);
+            }
+        }
+
+        private void btnSelectPreview_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Title = "Select Preview Image";
+                dialog.Filter = "Image Files|*.jpg;*.jpeg;*.png;*.bmp;*.gif";
+
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    _selectedPreviewPath = dialog.FileName;
+                    SetPicturePreview(_selectedPreviewPath);
+
+                    if (cmbProgram.SelectedItem is ProgramItem selectedProgram)
+                    {
+                        lblProgramTitle.Text = selectedProgram.ProgramName;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(txtProgramId.Text))
+                    {
+                        lblProgramTitle.Text = txtProgramId.Text.Trim();
+                    }
+                    else
+                    {
+                        lblProgramTitle.Text = "Program Preview";
+                    }
+                }
+            }
+        }
+
+        private void btnAddProgram_Click(object sender, EventArgs e)
+        {
+            string programCode = Prompt.ShowDialog("Enter Program Code:", "Add Program");
+            if (string.IsNullOrWhiteSpace(programCode))
+            {
+                MessageBox.Show("Program Code is required.");
+                return;
+            }
+
+            string programName = Prompt.ShowDialog("Enter Program Name:", "Add Program");
+            if (string.IsNullOrWhiteSpace(programName))
+            {
+                MessageBox.Show("Program Name is required.");
+                return;
+            }
+
+            string imagePath = string.Empty;
+
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Title = "Select Program Image";
+                dialog.Filter = "Image Files|*.jpg;*.jpeg;*.png;*.bmp;*.gif";
+
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    imagePath = dialog.FileName;
+                }
+            }
+
+            try
+            {
+                bool result = _programRepository.AddProgram(programCode.Trim(), programName.Trim(), imagePath);
+
+                if (result)
+                {
+                    MessageBox.Show("Program added successfully.");
+                    LoadPrograms();
+
+                    ProgramItem addedProgram = _programItems.FirstOrDefault(p => p.ProgramCode == programCode.Trim());
+                    if (addedProgram != null)
+                    {
+                        cmbProgram.SelectedItem = addedProgram;
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("A program with that code already exists.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error adding program: " + ex.Message);
             }
         }
 
@@ -968,6 +1091,65 @@ namespace TVSchedulingSystem
             LoginForm login = new LoginForm();
             login.Show();
             Close();
+        }
+
+        private static class Prompt
+        {
+            public static string ShowDialog(string text, string caption)
+            {
+                Form prompt = new Form()
+                {
+                    Width = 420,
+                    Height = 170,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    Text = caption,
+                    StartPosition = FormStartPosition.CenterScreen,
+                    MinimizeBox = false,
+                    MaximizeBox = false
+                };
+
+                Label textLabel = new Label()
+                {
+                    Left = 20,
+                    Top = 20,
+                    Width = 360,
+                    Text = text
+                };
+
+                TextBox textBox = new TextBox()
+                {
+                    Left = 20,
+                    Top = 50,
+                    Width = 360
+                };
+
+                Button confirmation = new Button()
+                {
+                    Text = "OK",
+                    Left = 220,
+                    Width = 75,
+                    Top = 85,
+                    DialogResult = DialogResult.OK
+                };
+
+                Button cancel = new Button()
+                {
+                    Text = "Cancel",
+                    Left = 305,
+                    Width = 75,
+                    Top = 85,
+                    DialogResult = DialogResult.Cancel
+                };
+
+                prompt.Controls.Add(textLabel);
+                prompt.Controls.Add(textBox);
+                prompt.Controls.Add(confirmation);
+                prompt.Controls.Add(cancel);
+                prompt.AcceptButton = confirmation;
+                prompt.CancelButton = cancel;
+
+                return prompt.ShowDialog() == DialogResult.OK ? textBox.Text : string.Empty;
+            }
         }
     }
 }
