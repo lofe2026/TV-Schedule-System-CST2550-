@@ -2,15 +2,8 @@
 {
     partial class ManagerForm
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -22,10 +15,6 @@
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             tableLayoutPanel1 = new TableLayoutPanel();
@@ -42,8 +31,6 @@
             btnAdd = new Button();
             btnSuggest = new Button();
             btnSelectImage = new Button();
-            btnAiSuggestSlot = new Button();
-            btnAiRecommendChannel = new Button();
             dataGridView1 = new DataGridView();
             label1 = new Label();
             panel1 = new Panel();
@@ -51,7 +38,6 @@
             lblProgramTitle = new Label();
             lblClock = new Label();
             btnBack = new Button();
-            txtAiOutput = new TextBox();
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)numDuration).BeginInit();
@@ -75,17 +61,15 @@
             tableLayoutPanel1.Controls.Add(lblProgramTitle, 1, 2);
             tableLayoutPanel1.Controls.Add(lblClock, 1, 3);
             tableLayoutPanel1.Controls.Add(btnBack, 1, 0);
-            tableLayoutPanel1.Controls.Add(txtAiOutput, 0, 4);
             tableLayoutPanel1.Dock = DockStyle.Fill;
             tableLayoutPanel1.ForeColor = SystemColors.ActiveCaptionText;
             tableLayoutPanel1.Location = new Point(0, 0);
             tableLayoutPanel1.Name = "tableLayoutPanel1";
-            tableLayoutPanel1.RowCount = 5;
+            tableLayoutPanel1.RowCount = 4;
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 180F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 66.6666641F));
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel1.Size = new Size(1295, 626);
             tableLayoutPanel1.TabIndex = 1;
             // 
@@ -196,8 +180,6 @@
             flowLayoutPanel1.Controls.Add(btnAdd);
             flowLayoutPanel1.Controls.Add(btnSuggest);
             flowLayoutPanel1.Controls.Add(btnSelectImage);
-            flowLayoutPanel1.Controls.Add(btnAiSuggestSlot);
-            flowLayoutPanel1.Controls.Add(btnAiRecommendChannel);
             flowLayoutPanel1.Dock = DockStyle.Top;
             flowLayoutPanel1.Location = new Point(3, 243);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
@@ -242,34 +224,6 @@
             btnSelectImage.Text = "Select Preview";
             btnSelectImage.UseVisualStyleBackColor = false;
             // 
-            // btnAiSuggestSlot
-            // 
-            btnAiSuggestSlot.BackColor = Color.RoyalBlue;
-            btnAiSuggestSlot.Cursor = Cursors.Hand;
-            btnAiSuggestSlot.Dock = DockStyle.Fill;
-            btnAiSuggestSlot.FlatStyle = FlatStyle.Flat;
-            btnAiSuggestSlot.ForeColor = Color.White;
-            btnAiSuggestSlot.Location = new Point(471, 3);
-            btnAiSuggestSlot.Name = "btnAiSuggestSlot";
-            btnAiSuggestSlot.Size = new Size(150, 35);
-            btnAiSuggestSlot.TabIndex = 5;
-            btnAiSuggestSlot.Text = "AI Suggest";
-            btnAiSuggestSlot.UseVisualStyleBackColor = false;
-            // 
-            // btnAiRecommendChannel
-            // 
-            btnAiRecommendChannel.BackColor = Color.RoyalBlue;
-            btnAiRecommendChannel.Cursor = Cursors.Hand;
-            btnAiRecommendChannel.Dock = DockStyle.Fill;
-            btnAiRecommendChannel.FlatStyle = FlatStyle.Flat;
-            btnAiRecommendChannel.ForeColor = Color.White;
-            btnAiRecommendChannel.Location = new Point(627, 3);
-            btnAiRecommendChannel.Name = "btnAiRecommendChannel";
-            btnAiRecommendChannel.Size = new Size(150, 35);
-            btnAiRecommendChannel.TabIndex = 6;
-            btnAiRecommendChannel.Text = "AI Recommend";
-            btnAiRecommendChannel.UseVisualStyleBackColor = false;
-            // 
             // dataGridView1
             // 
             dataGridView1.AllowUserToAddRows = false;
@@ -283,7 +237,7 @@
             dataGridView1.Name = "dataGridView1";
             dataGridView1.ReadOnly = true;
             dataGridView1.RowHeadersWidth = 51;
-            dataGridView1.Size = new Size(935, 211);
+            dataGridView1.Size = new Size(935, 320);
             dataGridView1.TabIndex = 3;
             // 
             // label1
@@ -358,14 +312,6 @@
             btnBack.UseVisualStyleBackColor = true;
             btnBack.Click += btnBack_Click;
             // 
-            // txtAiOutput
-            // 
-            txtAiOutput.Dock = DockStyle.Fill;
-            txtAiOutput.Location = new Point(3, 520);
-            txtAiOutput.Name = "txtAiOutput";
-            txtAiOutput.Size = new Size(935, 27);
-            txtAiOutput.TabIndex = 8;
-            // 
             // ManagerForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -400,7 +346,6 @@
         private TextBox txtProgramId;
         private DateTimePicker dtpStartTime;
         private Label label1;
-        private Button btnRemove;
         private Button btnSelectImage;
         private NumericUpDown numDuration;
         private Button btnAdd;
@@ -411,10 +356,5 @@
         private Label lblProgramTitle;
         private TableLayoutPanel tableLayoutPanel1;
         private Button btnBack;
-        private TextBox txtAiOutput;
-        private Button btnAiSuggestSlot;
-        private Button btnAiRecommendChannel;
     }
-
-
 }

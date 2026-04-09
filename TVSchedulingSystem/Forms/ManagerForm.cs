@@ -24,8 +24,6 @@ namespace TVSchedulingSystem.Forms
             btnSelectImage.Click += btnSelectImage_Click;
             cmbChannel.SelectedIndexChanged += cmbChannel_SelectedIndexChanged;
             dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
-            btnAiSuggestSlot.Click += btnAiSuggestSlot_Click;
-            btnAiRecommendChannel.Click += btnAiRecommendChannel_Click;
             btnBack.Click += btnBack_Click;
         }
 
@@ -35,111 +33,8 @@ namespace TVSchedulingSystem.Forms
             StartClock();
             LoadChannels();
             LoadSchedules();
-
-            if (txtAiOutput != null)
-            {
-                txtAiOutput.Text = "AI Assistant ready.";
-            }
         }
 
-        // =========================
-        // AI ASSISTANT
-        // =========================
-
-        private void btnAiSuggestSlot_Click(object sender, EventArgs e)
-        {
-            if (cmbChannel.SelectedItem == null)
-            {
-                txtAiOutput.Text = "AI: Please select a channel first.";
-                return;
-            }
-
-            int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
-            int duration = Convert.ToInt32(numDuration.Value);
-
-            DateTime bestSlot = FindBestSlot(channelId, duration);
-
-            dtpStartTime.Value = bestSlot;
-
-            txtAiOutput.Text =
-                "AI Suggestion:" + Environment.NewLine +
-                "Channel: " + channelId + Environment.NewLine +
-                "Start Time: " + bestSlot.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Reason: Based on current time and schedule availability.";
-        }
-
-        private void btnAiRecommendChannel_Click(object sender, EventArgs e)
-        {
-            int duration = Convert.ToInt32(numDuration.Value);
-
-            int bestChannel = 1;
-            DateTime bestTime = FindBestSlot(1, duration);
-
-            for (int channel = 2; channel <= 3; channel++)
-            {
-                DateTime candidate = FindBestSlot(channel, duration);
-
-                if (candidate < bestTime)
-                {
-                    bestTime = candidate;
-                    bestChannel = channel;
-                }
-            }
-
-            cmbChannel.SelectedItem = bestChannel;
-            dtpStartTime.Value = bestTime;
-
-            txtAiOutput.Text =
-                "AI Recommendation:" + Environment.NewLine +
-                "Best Channel: " + bestChannel + Environment.NewLine +
-                "Best Time: " + bestTime.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Reason: This channel has the earliest valid slot from the present time onwards.";
-        }
-
-        // =========================
-        // AI LOGIC
-        // =========================
-
-        private DateTime FindBestSlot(int channelId, int durationMinutes)
-        {
-            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId);
-
-            DateTime now = DateTime.Now;
-            now = new DateTime(
-                now.Year,
-                now.Month,
-                now.Day,
-                now.Hour,
-                now.Minute,
-                0
-            );
-
-            if (schedules.Length == 0)
-                return now;
-
-            for (int i = 0; i < schedules.Length; i++)
-            {
-                Schedule current = schedules[i];
-
-                // If current time plus duration fits before the next scheduled program
-                if (now.AddMinutes(durationMinutes) <= current.StartTime)
-                {
-                    return now;
-                }
-
-                // If current time is during or before an existing schedule, move to its end
-                if (now < current.EndTime)
-                {
-                    now = current.EndTime;
-                }
-            }
-
-            return now;
-        }
-
-        // =========================
-        // FORM SETUP
-        // =========================
         private void SetupForm()
         {
             dtpStartTime.Format = DateTimePickerFormat.Custom;
@@ -160,18 +55,8 @@ namespace TVSchedulingSystem.Forms
             dataGridView1.ReadOnly = true;
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dataGridView1.MultiSelect = false;
-
-            if (txtAiOutput != null)
-            {
-                txtAiOutput.Multiline = true;
-                txtAiOutput.ReadOnly = true;
-                txtAiOutput.ScrollBars = ScrollBars.Vertical;
-            }
         }
 
-        // =========================
-        // CLOCK
-        // =========================
         private void StartClock()
         {
             _clockTimer = new System.Windows.Forms.Timer();
@@ -191,9 +76,6 @@ namespace TVSchedulingSystem.Forms
             lblClock.Text = DateTime.Now.ToString("HH:mm:ss");
         }
 
-        // =========================
-        // CHANNELS
-        // =========================
         private void LoadChannels()
         {
             cmbChannel.Items.Clear();
@@ -213,9 +95,6 @@ namespace TVSchedulingSystem.Forms
             LoadSchedules();
         }
 
-        // =========================
-        // GRID LOAD
-        // =========================
         private void LoadSchedules()
         {
             if (cmbChannel.SelectedItem == null)
@@ -268,9 +147,6 @@ namespace TVSchedulingSystem.Forms
             }
         }
 
-        // =========================
-        // ADD SCHEDULE
-        // =========================
         private void btnAdd_Click(object sender, EventArgs e)
         {
             if (cmbChannel.SelectedItem == null)
@@ -287,7 +163,7 @@ namespace TVSchedulingSystem.Forms
 
             int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
             string programId = txtProgramId.Text.Trim();
-            DateTime startTime = dtpStartTime.Value;
+            DateTime startTime = NormalizeToMinute(dtpStartTime.Value);
             int durationMinutes = Convert.ToInt32(numDuration.Value);
 
             int scheduleId = GetNextScheduleId();
@@ -312,20 +188,15 @@ namespace TVSchedulingSystem.Forms
 
             if (!added)
             {
-                txtAiOutput.Text = "AI Assistant: Conflict detected. Try AI Suggest Slot or AI Recommend Channel.";
                 MessageBox.Show("Schedule could not be added. The slot may already exist or conflict with another schedule.");
                 return;
             }
 
             MessageBox.Show("Schedule added successfully.");
-            txtAiOutput.Text = "AI Assistant: Schedule added successfully.";
             ClearInputsAfterAdd();
             LoadSchedules();
         }
 
-        // =========================
-        // SUGGEST SLOT
-        // =========================
         private void btnSuggest_Click(object sender, EventArgs e)
         {
             if (cmbChannel.SelectedItem == null)
@@ -343,9 +214,34 @@ namespace TVSchedulingSystem.Forms
             MessageBox.Show("Suggested next available slot: " + suggestedTime.ToString("dd/MM/yyyy HH:mm"));
         }
 
-        // =========================
-        // SELECT IMAGE
-        // =========================
+        private DateTime FindBestSlot(int channelId, int durationMinutes)
+        {
+            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId);
+
+            DateTime now = DateTime.Now;
+            now = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
+
+            if (schedules.Length == 0)
+                return now;
+
+            for (int i = 0; i < schedules.Length; i++)
+            {
+                Schedule current = schedules[i];
+
+                if (now.AddMinutes(durationMinutes) <= current.StartTime)
+                {
+                    return now;
+                }
+
+                if (now < current.EndTime)
+                {
+                    now = current.EndTime;
+                }
+            }
+
+            return now;
+        }
+
         private void btnSelectImage_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog dialog = new OpenFileDialog())
@@ -371,9 +267,6 @@ namespace TVSchedulingSystem.Forms
             }
         }
 
-        // =========================
-        // GRID SELECTION PREVIEW
-        // =========================
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
             UpdatePreviewFromSelectedRow();
@@ -399,9 +292,6 @@ namespace TVSchedulingSystem.Forms
             SetPicturePreview(imagePath);
         }
 
-        // =========================
-        // HELPERS
-        // =========================
         private int GetNextScheduleId()
         {
             Schedule[] allSchedules = _manager.GetAllSchedules();
@@ -483,6 +373,11 @@ namespace TVSchedulingSystem.Forms
             }
         }
 
+        private DateTime NormalizeToMinute(DateTime value)
+        {
+            return new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, 0);
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             if (_clockTimer != null)
@@ -505,8 +400,7 @@ namespace TVSchedulingSystem.Forms
         {
             LoginForm login = new LoginForm();
             login.Show();
-
-            this.Close();
+            Close();
         }
     }
 }

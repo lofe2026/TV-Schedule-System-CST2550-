@@ -38,7 +38,7 @@ namespace TVSchedulingSystem.Forms
             TimeSpan elapsed = DateTime.Now - sessionStart;
 
             // Change back to 30 if you want the real requirement
-            if (elapsed.TotalMinutes >= 30)
+            if (elapsed.TotalMinutes >= 0.3)
             {
                 sessionTimer.Stop();
                 MessageBox.Show("Viewer session expired after 30 minutes.");

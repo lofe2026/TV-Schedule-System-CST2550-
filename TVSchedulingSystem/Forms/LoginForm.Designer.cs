@@ -35,6 +35,9 @@
             tableLayoutPanel1 = new TableLayoutPanel();
             cmbRole = new ComboBox();
             btnViewerAccess = new Button();
+            textBox1 = new TextBox();
+            textBox2 = new TextBox();
+            textBox3 = new TextBox();
             tableLayoutPanel1.SuspendLayout();
             SuspendLayout();
             // 
@@ -58,12 +61,14 @@
             // btnLogin
             // 
             btnLogin.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            btnLogin.BackColor = SystemColors.ButtonHighlight;
+            btnLogin.BackgroundImageLayout = ImageLayout.None;
             btnLogin.Location = new Point(267, 228);
             btnLogin.Name = "btnLogin";
             btnLogin.Size = new Size(266, 69);
             btnLogin.TabIndex = 4;
             btnLogin.Text = "Login";
-            btnLogin.UseVisualStyleBackColor = true;
+            btnLogin.UseVisualStyleBackColor = false;
             btnLogin.Click += btnLogin_Click;
             // 
             // btnSignup
@@ -89,6 +94,9 @@
             tableLayoutPanel1.Controls.Add(btnViewerAccess, 1, 5);
             tableLayoutPanel1.Controls.Add(txtPassword, 1, 1);
             tableLayoutPanel1.Controls.Add(txtUsername, 1, 0);
+            tableLayoutPanel1.Controls.Add(textBox1, 0, 0);
+            tableLayoutPanel1.Controls.Add(textBox2, 0, 1);
+            tableLayoutPanel1.Controls.Add(textBox3, 0, 2);
             tableLayoutPanel1.Dock = DockStyle.Fill;
             tableLayoutPanel1.Location = new Point(0, 0);
             tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -123,6 +131,45 @@
             btnViewerAccess.UseVisualStyleBackColor = true;
             btnViewerAccess.Click += btnViewerAccess_Click;
             // 
+            // textBox1
+            // 
+            textBox1.BorderStyle = BorderStyle.None;
+            textBox1.Font = new Font("Stencil", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            textBox1.ForeColor = SystemColors.InactiveBorder;
+            textBox1.Location = new Point(3, 3);
+            textBox1.Name = "textBox1";
+            textBox1.ReadOnly = true;
+            textBox1.Size = new Size(244, 21);
+            textBox1.TabIndex = 7;
+            textBox1.Text = "Username";
+            textBox1.TextAlign = HorizontalAlignment.Right;
+            // 
+            // textBox2
+            // 
+            textBox2.BorderStyle = BorderStyle.None;
+            textBox2.Font = new Font("Stencil", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            textBox2.ForeColor = SystemColors.InactiveBorder;
+            textBox2.Location = new Point(3, 75);
+            textBox2.Name = "textBox2";
+            textBox2.ReadOnly = true;
+            textBox2.Size = new Size(244, 21);
+            textBox2.TabIndex = 8;
+            textBox2.Text = "Password";
+            textBox2.TextAlign = HorizontalAlignment.Right;
+            // 
+            // textBox3
+            // 
+            textBox3.BorderStyle = BorderStyle.None;
+            textBox3.Font = new Font("Stencil", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            textBox3.ForeColor = SystemColors.InactiveBorder;
+            textBox3.Location = new Point(3, 153);
+            textBox3.Name = "textBox3";
+            textBox3.ReadOnly = true;
+            textBox3.Size = new Size(244, 21);
+            textBox3.TabIndex = 9;
+            textBox3.Text = "Choose Role";
+            textBox3.TextAlign = HorizontalAlignment.Right;
+            // 
             // LoginForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
@@ -145,5 +192,8 @@
         private TableLayoutPanel tableLayoutPanel1;
         private ComboBox cmbRole;
         private Button btnViewerAccess;
+        private TextBox textBox1;
+        private TextBox textBox2;
+        private TextBox textBox3;
     }
 }

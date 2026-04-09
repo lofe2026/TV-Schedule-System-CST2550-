@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using TVSchedulingSystem.Forms;
 using TVSchedulingSystem.Models;
+using TVSchedulingSystem.Repositories;
 using TVSchedulingSystem.Services;
 
 namespace TVSchedulingSystem
@@ -12,28 +14,52 @@ namespace TVSchedulingSystem
     public partial class MainForm : Form
     {
         private readonly ScheduleManager _manager;
+        private readonly AIService _aiService;
+        private readonly ProgramRepository _programRepository;
+        private readonly List<ChatTurn> _conversation = new List<ChatTurn>();
 
-        private Button btnSelectImage;
+        private List<ProgramItem> _programItems = new List<ProgramItem>();
+
         private Button btnBack;
-        private Button btnAiRecommendChannel;
-        private Button btnAiSuggestSlot;
-        private Button btnApplyAiRecommendation;
+        private Button btnSendAi;
 
         private System.Windows.Forms.Timer timerClock = new System.Windows.Forms.Timer();
-        private string selectedImagePath = string.Empty;
 
-        // AI Agent state
-        private int _recommendedChannel = -1;
-        private DateTime _recommendedStartTime = DateTime.MinValue;
-        private int _recommendedDuration = 0;
-        private bool _hasAiRecommendation = false;
-        private string _recommendedReason = string.Empty;
+        private DataGridView dataGridView1;
+        private TableLayoutPanel tableLayoutPanel1;
+        private Label label1;
+        private TableLayoutPanel tableLayoutPanel2;
+        private ComboBox cmbProgram;
+        private TextBox txtProgramId;
+        private DateTimePicker dtpStartTime;
+        private NumericUpDown numDuration;
+        private FlowLayoutPanel flowLayoutPanel1;
+        private Button btnSuggest;
+        private Button btnAdd;
+        private ComboBox cmbChannel;
+        private Label label2;
+        private Label label3;
+        private Label label4;
+        private Label label5;
+        private Label label6;
+
+        private Panel panelPreview;
+        private Panel panelAi;
+
+        private PictureBox picturePreview;
+        private RichTextBox txtAiChat;
+        private TextBox txtChatInput;
+        private Label lblProgramTitle;
+        private Label lblClock;
+        private Button btnRemove;
 
         public MainForm()
         {
             InitializeComponent();
 
             _manager = new ScheduleManager();
+            _aiService = new AIService();
+            _programRepository = new ProgramRepository();
 
             timerClock.Interval = 1000;
             timerClock.Tick += TimerClock_Tick;
@@ -52,17 +78,18 @@ namespace TVSchedulingSystem
             dtpStartTime.Format = DateTimePickerFormat.Custom;
             dtpStartTime.CustomFormat = "dd/MM/yyyy HH:mm";
 
+            txtProgramId.ReadOnly = true;
+
             dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
             cmbChannel.SelectedIndexChanged += cmbChannel_SelectedIndexChanged;
+            cmbProgram.SelectedIndexChanged += cmbProgram_SelectedIndexChanged;
 
             btnAdd.Click += btnAdd_Click;
             btnSuggest.Click += btnSuggest_Click;
             btnRemove.Click += btnRemove_Click;
-            btnSelectImage.Click += btnSelectImage_Click;
-            btnAiRecommendChannel.Click += btnAiRecommendChannel_Click;
-            btnAiSuggestSlot.Click += btnAiSuggestSlot_Click;
-            btnApplyAiRecommendation.Click += btnApplyAiRecommendation_Click;
+            btnSendAi.Click += btnSendAi_Click;
             btnBack.Click += btnBack_Click;
+            txtChatInput.KeyDown += txtChatInput_KeyDown;
         }
 
         private void InitializeComponent()
@@ -75,31 +102,33 @@ namespace TVSchedulingSystem
             cmbChannel = new ComboBox();
             label2 = new Label();
             label3 = new Label();
+            label6 = new Label();
             label4 = new Label();
             label5 = new Label();
+            cmbProgram = new ComboBox();
             txtProgramId = new TextBox();
             dtpStartTime = new DateTimePicker();
             numDuration = new NumericUpDown();
-            panel1 = new Panel();
-            txtAiOutput = new TextBox();
+            panelPreview = new Panel();
             picturePreview = new PictureBox();
             flowLayoutPanel1 = new FlowLayoutPanel();
             btnAdd = new Button();
             btnSuggest = new Button();
             btnRemove = new Button();
-            btnSelectImage = new Button();
-            btnAiRecommendChannel = new Button();
-            btnAiSuggestSlot = new Button();
-            btnApplyAiRecommendation = new Button();
             lblProgramTitle = new Label();
             lblClock = new Label();
+            panelAi = new Panel();
+            txtAiChat = new RichTextBox();
+            txtChatInput = new TextBox();
+            btnSendAi = new Button();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)numDuration).BeginInit();
-            panel1.SuspendLayout();
+            panelPreview.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)picturePreview).BeginInit();
             flowLayoutPanel1.SuspendLayout();
+            panelAi.SuspendLayout();
             SuspendLayout();
             // 
             // dataGridView1
@@ -115,55 +144,58 @@ namespace TVSchedulingSystem
             dataGridView1.Name = "dataGridView1";
             dataGridView1.ReadOnly = true;
             dataGridView1.RowHeadersWidth = 51;
+            tableLayoutPanel1.SetRowSpan(dataGridView1, 2);
             dataGridView1.RowTemplate.Height = 70;
-            dataGridView1.Size = new Size(1053, 358);
+            dataGridView1.Size = new Size(954, 458);
             dataGridView1.TabIndex = 3;
             // 
             // tableLayoutPanel1
             // 
-            tableLayoutPanel1.BackColor = Color.White;
+            tableLayoutPanel1.BackColor = Color.WhiteSmoke;
             tableLayoutPanel1.ColumnCount = 2;
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 75F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 68F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32F));
             tableLayoutPanel1.Controls.Add(label1, 0, 0);
             tableLayoutPanel1.Controls.Add(btnBack, 1, 0);
             tableLayoutPanel1.Controls.Add(tableLayoutPanel2, 0, 1);
-            tableLayoutPanel1.Controls.Add(panel1, 1, 1);
+            tableLayoutPanel1.Controls.Add(panelPreview, 1, 1);
             tableLayoutPanel1.Controls.Add(flowLayoutPanel1, 0, 2);
             tableLayoutPanel1.Controls.Add(lblProgramTitle, 1, 2);
             tableLayoutPanel1.Controls.Add(dataGridView1, 0, 3);
             tableLayoutPanel1.Controls.Add(lblClock, 1, 3);
+            tableLayoutPanel1.Controls.Add(panelAi, 1, 4);
             tableLayoutPanel1.Dock = DockStyle.Fill;
             tableLayoutPanel1.Location = new Point(0, 0);
             tableLayoutPanel1.Name = "tableLayoutPanel1";
-            tableLayoutPanel1.RowCount = 4;
+            tableLayoutPanel1.RowCount = 5;
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 180F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 90F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel1.Size = new Size(1413, 664);
+            tableLayoutPanel1.Size = new Size(1413, 764);
             tableLayoutPanel1.TabIndex = 0;
             // 
             // label1
             // 
             label1.AutoSize = true;
             label1.BackColor = Color.RoyalBlue;
-            label1.Dock = DockStyle.Left;
+            label1.Dock = DockStyle.Fill;
             label1.Font = new Font("Tempus Sans ITC", 13.8F, FontStyle.Regular, GraphicsUnit.Point, 0);
             label1.ForeColor = Color.White;
             label1.Location = new Point(3, 0);
             label1.Name = "label1";
-            label1.Size = new Size(317, 60);
+            label1.Size = new Size(954, 60);
             label1.TabIndex = 0;
             label1.Text = "TV Program Scheduling System";
-            label1.TextAlign = ContentAlignment.MiddleCenter;
+            label1.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // btnBack
             // 
             btnBack.Dock = DockStyle.Fill;
-            btnBack.Location = new Point(1062, 3);
+            btnBack.Location = new Point(963, 3);
             btnBack.Name = "btnBack";
-            btnBack.Size = new Size(348, 54);
+            btnBack.Size = new Size(447, 54);
             btnBack.TabIndex = 8;
             btnBack.Text = "Back to Login";
             btnBack.UseVisualStyleBackColor = true;
@@ -176,30 +208,34 @@ namespace TVSchedulingSystem
             tableLayoutPanel2.Controls.Add(cmbChannel, 1, 0);
             tableLayoutPanel2.Controls.Add(label2, 0, 0);
             tableLayoutPanel2.Controls.Add(label3, 0, 1);
-            tableLayoutPanel2.Controls.Add(label4, 0, 2);
-            tableLayoutPanel2.Controls.Add(label5, 0, 3);
-            tableLayoutPanel2.Controls.Add(txtProgramId, 1, 1);
-            tableLayoutPanel2.Controls.Add(dtpStartTime, 1, 2);
-            tableLayoutPanel2.Controls.Add(numDuration, 1, 3);
+            tableLayoutPanel2.Controls.Add(label6, 0, 2);
+            tableLayoutPanel2.Controls.Add(label4, 0, 3);
+            tableLayoutPanel2.Controls.Add(label5, 0, 4);
+            tableLayoutPanel2.Controls.Add(cmbProgram, 1, 1);
+            tableLayoutPanel2.Controls.Add(txtProgramId, 1, 2);
+            tableLayoutPanel2.Controls.Add(dtpStartTime, 1, 3);
+            tableLayoutPanel2.Controls.Add(numDuration, 1, 4);
             tableLayoutPanel2.Dock = DockStyle.Fill;
             tableLayoutPanel2.Location = new Point(3, 63);
             tableLayoutPanel2.Name = "tableLayoutPanel2";
-            tableLayoutPanel2.RowCount = 4;
-            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel2.Size = new Size(1053, 174);
+            tableLayoutPanel2.RowCount = 5;
+            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 20F));
+            tableLayoutPanel2.Size = new Size(954, 174);
             tableLayoutPanel2.TabIndex = 1;
             // 
             // cmbChannel
             // 
             cmbChannel.Dock = DockStyle.Fill;
+            cmbChannel.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbChannel.FormattingEnabled = true;
-            cmbChannel.Location = new Point(266, 3);
+            cmbChannel.Location = new Point(241, 3);
             cmbChannel.Name = "cmbChannel";
-            cmbChannel.Size = new Size(784, 28);
-            cmbChannel.TabIndex = 9;
+            cmbChannel.Size = new Size(710, 28);
+            cmbChannel.TabIndex = 0;
             // 
             // label2
             // 
@@ -207,7 +243,7 @@ namespace TVSchedulingSystem
             label2.Dock = DockStyle.Fill;
             label2.Location = new Point(3, 0);
             label2.Name = "label2";
-            label2.Size = new Size(257, 43);
+            label2.Size = new Size(232, 34);
             label2.TabIndex = 0;
             label2.Text = "Channel";
             label2.TextAlign = ContentAlignment.MiddleCenter;
@@ -216,21 +252,32 @@ namespace TVSchedulingSystem
             // 
             label3.AutoSize = true;
             label3.Dock = DockStyle.Fill;
-            label3.Location = new Point(3, 43);
+            label3.Location = new Point(3, 34);
             label3.Name = "label3";
-            label3.Size = new Size(257, 43);
+            label3.Size = new Size(232, 34);
             label3.TabIndex = 1;
-            label3.Text = "Program ID";
+            label3.Text = "Program";
             label3.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // label6
+            // 
+            label6.AutoSize = true;
+            label6.Dock = DockStyle.Fill;
+            label6.Location = new Point(3, 68);
+            label6.Name = "label6";
+            label6.Size = new Size(232, 34);
+            label6.TabIndex = 2;
+            label6.Text = "Program ID";
+            label6.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // label4
             // 
             label4.AutoSize = true;
             label4.Dock = DockStyle.Fill;
-            label4.Location = new Point(3, 86);
+            label4.Location = new Point(3, 102);
             label4.Name = "label4";
-            label4.Size = new Size(257, 43);
-            label4.TabIndex = 2;
+            label4.Size = new Size(232, 34);
+            label4.TabIndex = 3;
             label4.Text = "Start Time";
             label4.TextAlign = ContentAlignment.MiddleCenter;
             // 
@@ -238,68 +285,65 @@ namespace TVSchedulingSystem
             // 
             label5.AutoSize = true;
             label5.Dock = DockStyle.Fill;
-            label5.Location = new Point(3, 129);
+            label5.Location = new Point(3, 136);
             label5.Name = "label5";
-            label5.Size = new Size(257, 45);
-            label5.TabIndex = 3;
+            label5.Size = new Size(232, 38);
+            label5.TabIndex = 4;
             label5.Text = "Duration";
             label5.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // cmbProgram
+            // 
+            cmbProgram.Dock = DockStyle.Fill;
+            cmbProgram.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbProgram.FormattingEnabled = true;
+            cmbProgram.Location = new Point(241, 37);
+            cmbProgram.Name = "cmbProgram";
+            cmbProgram.Size = new Size(710, 28);
+            cmbProgram.TabIndex = 1;
             // 
             // txtProgramId
             // 
             txtProgramId.Dock = DockStyle.Fill;
-            txtProgramId.Location = new Point(266, 46);
+            txtProgramId.Location = new Point(241, 71);
             txtProgramId.Name = "txtProgramId";
-            txtProgramId.Size = new Size(784, 27);
-            txtProgramId.TabIndex = 5;
+            txtProgramId.Size = new Size(710, 27);
+            txtProgramId.TabIndex = 2;
             // 
             // dtpStartTime
             // 
             dtpStartTime.Dock = DockStyle.Fill;
-            dtpStartTime.Location = new Point(266, 89);
+            dtpStartTime.Location = new Point(241, 105);
             dtpStartTime.Name = "dtpStartTime";
-            dtpStartTime.Size = new Size(784, 27);
-            dtpStartTime.TabIndex = 6;
+            dtpStartTime.Size = new Size(710, 27);
+            dtpStartTime.TabIndex = 3;
             // 
             // numDuration
             // 
             numDuration.Dock = DockStyle.Fill;
-            numDuration.Location = new Point(266, 132);
+            numDuration.Location = new Point(241, 139);
             numDuration.Name = "numDuration";
-            numDuration.Size = new Size(784, 27);
-            numDuration.TabIndex = 7;
+            numDuration.Size = new Size(710, 27);
+            numDuration.TabIndex = 4;
             // 
-            // panel1
+            // panelPreview
             // 
-            panel1.BackColor = Color.Black;
-            panel1.Controls.Add(txtAiOutput);
-            panel1.Controls.Add(picturePreview);
-            panel1.Dock = DockStyle.Fill;
-            panel1.Location = new Point(1062, 63);
-            panel1.Name = "panel1";
-            panel1.Size = new Size(348, 174);
-            panel1.TabIndex = 4;
-            // 
-            // txtAiOutput
-            // 
-            txtAiOutput.BackColor = Color.Black;
-            txtAiOutput.Dock = DockStyle.Fill;
-            txtAiOutput.ForeColor = Color.White;
-            txtAiOutput.Location = new Point(0, 95);
-            txtAiOutput.Multiline = true;
-            txtAiOutput.Name = "txtAiOutput";
-            txtAiOutput.ReadOnly = true;
-            txtAiOutput.ScrollBars = ScrollBars.Vertical;
-            txtAiOutput.Size = new Size(348, 79);
-            txtAiOutput.TabIndex = 1;
+            panelPreview.BackColor = Color.Black;
+            panelPreview.Controls.Add(picturePreview);
+            panelPreview.Dock = DockStyle.Fill;
+            panelPreview.Location = new Point(963, 63);
+            panelPreview.Name = "panelPreview";
+            panelPreview.Padding = new Padding(8);
+            panelPreview.Size = new Size(447, 174);
+            panelPreview.TabIndex = 4;
             // 
             // picturePreview
             // 
             picturePreview.BackColor = Color.Black;
-            picturePreview.Dock = DockStyle.Top;
-            picturePreview.Location = new Point(0, 0);
+            picturePreview.Dock = DockStyle.Fill;
+            picturePreview.Location = new Point(8, 8);
             picturePreview.Name = "picturePreview";
-            picturePreview.Size = new Size(348, 95);
+            picturePreview.Size = new Size(431, 158);
             picturePreview.SizeMode = PictureBoxSizeMode.Zoom;
             picturePreview.TabIndex = 0;
             picturePreview.TabStop = false;
@@ -309,14 +353,10 @@ namespace TVSchedulingSystem
             flowLayoutPanel1.Controls.Add(btnAdd);
             flowLayoutPanel1.Controls.Add(btnSuggest);
             flowLayoutPanel1.Controls.Add(btnRemove);
-            flowLayoutPanel1.Controls.Add(btnSelectImage);
-            flowLayoutPanel1.Controls.Add(btnAiRecommendChannel);
-            flowLayoutPanel1.Controls.Add(btnAiSuggestSlot);
-            flowLayoutPanel1.Controls.Add(btnApplyAiRecommendation);
             flowLayoutPanel1.Dock = DockStyle.Fill;
             flowLayoutPanel1.Location = new Point(3, 243);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Size = new Size(1053, 54);
+            flowLayoutPanel1.Size = new Size(954, 54);
             flowLayoutPanel1.TabIndex = 2;
             // 
             // btnAdd
@@ -339,7 +379,7 @@ namespace TVSchedulingSystem
             btnSuggest.Location = new Point(137, 3);
             btnSuggest.Name = "btnSuggest";
             btnSuggest.Size = new Size(128, 35);
-            btnSuggest.TabIndex = 2;
+            btnSuggest.TabIndex = 1;
             btnSuggest.Text = "Suggest Slot";
             btnSuggest.UseVisualStyleBackColor = false;
             // 
@@ -351,57 +391,9 @@ namespace TVSchedulingSystem
             btnRemove.Location = new Point(271, 3);
             btnRemove.Name = "btnRemove";
             btnRemove.Size = new Size(128, 35);
-            btnRemove.TabIndex = 3;
+            btnRemove.TabIndex = 2;
             btnRemove.Text = "Remove";
             btnRemove.UseVisualStyleBackColor = false;
-            // 
-            // btnSelectImage
-            // 
-            btnSelectImage.BackColor = Color.RoyalBlue;
-            btnSelectImage.FlatStyle = FlatStyle.Flat;
-            btnSelectImage.ForeColor = Color.White;
-            btnSelectImage.Location = new Point(405, 3);
-            btnSelectImage.Name = "btnSelectImage";
-            btnSelectImage.Size = new Size(128, 35);
-            btnSelectImage.TabIndex = 4;
-            btnSelectImage.Text = "Select Preview";
-            btnSelectImage.UseVisualStyleBackColor = false;
-            // 
-            // btnAiRecommendChannel
-            // 
-            btnAiRecommendChannel.BackColor = Color.RoyalBlue;
-            btnAiRecommendChannel.FlatStyle = FlatStyle.Flat;
-            btnAiRecommendChannel.ForeColor = Color.White;
-            btnAiRecommendChannel.Location = new Point(539, 3);
-            btnAiRecommendChannel.Name = "btnAiRecommendChannel";
-            btnAiRecommendChannel.Size = new Size(128, 35);
-            btnAiRecommendChannel.TabIndex = 7;
-            btnAiRecommendChannel.Text = "AI Recommend";
-            btnAiRecommendChannel.UseVisualStyleBackColor = false;
-            // 
-            // btnAiSuggestSlot
-            // 
-            btnAiSuggestSlot.BackColor = Color.RoyalBlue;
-            btnAiSuggestSlot.FlatStyle = FlatStyle.Flat;
-            btnAiSuggestSlot.ForeColor = Color.White;
-            btnAiSuggestSlot.Location = new Point(673, 3);
-            btnAiSuggestSlot.Name = "btnAiSuggestSlot";
-            btnAiSuggestSlot.Size = new Size(128, 35);
-            btnAiSuggestSlot.TabIndex = 8;
-            btnAiSuggestSlot.Text = "AI Suggest";
-            btnAiSuggestSlot.UseVisualStyleBackColor = false;
-            // 
-            // btnApplyAiRecommendation
-            // 
-            btnApplyAiRecommendation.BackColor = Color.DarkGreen;
-            btnApplyAiRecommendation.FlatStyle = FlatStyle.Flat;
-            btnApplyAiRecommendation.ForeColor = Color.White;
-            btnApplyAiRecommendation.Location = new Point(807, 3);
-            btnApplyAiRecommendation.Name = "btnApplyAiRecommendation";
-            btnApplyAiRecommendation.Size = new Size(185, 35);
-            btnApplyAiRecommendation.TabIndex = 9;
-            btnApplyAiRecommendation.Text = "Apply AI Recommendation";
-            btnApplyAiRecommendation.UseVisualStyleBackColor = false;
             // 
             // lblProgramTitle
             // 
@@ -409,9 +401,9 @@ namespace TVSchedulingSystem
             lblProgramTitle.Dock = DockStyle.Fill;
             lblProgramTitle.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
             lblProgramTitle.ForeColor = Color.White;
-            lblProgramTitle.Location = new Point(1062, 240);
+            lblProgramTitle.Location = new Point(963, 240);
             lblProgramTitle.Name = "lblProgramTitle";
-            lblProgramTitle.Size = new Size(348, 60);
+            lblProgramTitle.Size = new Size(447, 60);
             lblProgramTitle.TabIndex = 5;
             lblProgramTitle.Text = "Program Preview";
             lblProgramTitle.TextAlign = ContentAlignment.MiddleCenter;
@@ -419,19 +411,66 @@ namespace TVSchedulingSystem
             // lblClock
             // 
             lblClock.BackColor = Color.White;
-            lblClock.Dock = DockStyle.Top;
+            lblClock.Dock = DockStyle.Fill;
             lblClock.Font = new Font("Consolas", 28.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
             lblClock.ForeColor = Color.Orange;
-            lblClock.Location = new Point(1062, 300);
+            lblClock.Location = new Point(963, 300);
             lblClock.Name = "lblClock";
-            lblClock.Size = new Size(348, 70);
+            lblClock.Size = new Size(447, 90);
             lblClock.TabIndex = 6;
             lblClock.Text = "00:00:00";
             lblClock.TextAlign = ContentAlignment.MiddleCenter;
             // 
+            // panelAi
+            // 
+            panelAi.BackColor = Color.Black;
+            panelAi.Controls.Add(txtAiChat);
+            panelAi.Controls.Add(txtChatInput);
+            panelAi.Controls.Add(btnSendAi);
+            panelAi.Dock = DockStyle.Fill;
+            panelAi.Location = new Point(963, 393);
+            panelAi.Name = "panelAi";
+            panelAi.Padding = new Padding(8);
+            panelAi.Size = new Size(447, 368);
+            panelAi.TabIndex = 7;
+            // 
+            // txtAiChat
+            // 
+            txtAiChat.BackColor = Color.Black;
+            txtAiChat.BorderStyle = BorderStyle.None;
+            txtAiChat.Dock = DockStyle.Top;
+            txtAiChat.ForeColor = Color.White;
+            txtAiChat.Location = new Point(8, 8);
+            txtAiChat.Name = "txtAiChat";
+            txtAiChat.ReadOnly = true;
+            txtAiChat.Size = new Size(431, 300);
+            txtAiChat.TabIndex = 0;
+            txtAiChat.Text = "";
+            // 
+            // txtChatInput
+            // 
+            txtChatInput.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            txtChatInput.Location = new Point(8, 325);
+            txtChatInput.Name = "txtChatInput";
+            txtChatInput.Size = new Size(330, 27);
+            txtChatInput.TabIndex = 1;
+            // 
+            // btnSendAi
+            // 
+            btnSendAi.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            btnSendAi.BackColor = Color.MediumPurple;
+            btnSendAi.FlatStyle = FlatStyle.Flat;
+            btnSendAi.ForeColor = Color.White;
+            btnSendAi.Location = new Point(344, 323);
+            btnSendAi.Name = "btnSendAi";
+            btnSendAi.Size = new Size(95, 31);
+            btnSendAi.TabIndex = 2;
+            btnSendAi.Text = "Send";
+            btnSendAi.UseVisualStyleBackColor = false;
+            // 
             // MainForm
             // 
-            ClientSize = new Size(1413, 664);
+            ClientSize = new Size(1413, 764);
             Controls.Add(tableLayoutPanel1);
             Name = "MainForm";
             Text = "TV Program Scheduling System";
@@ -442,34 +481,68 @@ namespace TVSchedulingSystem
             tableLayoutPanel2.ResumeLayout(false);
             tableLayoutPanel2.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)numDuration).EndInit();
-            panel1.ResumeLayout(false);
-            panel1.PerformLayout();
+            panelPreview.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)picturePreview).EndInit();
             flowLayoutPanel1.ResumeLayout(false);
+            panelAi.ResumeLayout(false);
+            panelAi.PerformLayout();
             ResumeLayout(false);
         }
 
-        private void MainForm_Load(object? sender, EventArgs e)
+        private void MainForm_Load(object sender, EventArgs e)
         {
-            _manager.LoadFromDatabase();
-
-            if (cmbChannel.SelectedItem != null)
+            try
             {
-                int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
-                RefreshGrid(channelId);
+                LoadPrograms();
+                _manager.LoadFromDatabase();
+
+                if (cmbChannel.SelectedItem != null)
+                {
+                    int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
+                    RefreshGrid(channelId);
+                }
+
+                AppendChat("AI", "Hello. I am your scheduling assistant. Ask me about conflicts, channels, or better time slots.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading MainForm: " + ex.Message);
+            }
+        }
+
+        private void LoadPrograms()
+        {
+            _programItems = _programRepository.GetPrograms();
+
+            cmbProgram.Items.Clear();
+
+            foreach (ProgramItem item in _programItems)
+            {
+                cmbProgram.Items.Add(item);
             }
 
-            txtAiOutput.Text = "AI Agent ready." + Environment.NewLine +
-                               "It can detect conflicts, recommend a better slot, recommend a better channel, and apply its recommendation.";
-            UpdateClock();
+            if (cmbProgram.Items.Count > 0)
+            {
+                cmbProgram.SelectedIndex = 0;
+            }
+            else
+            {
+                txtProgramId.Clear();
+                ClearPreview();
+            }
         }
 
-        private void TimerClock_Tick(object? sender, EventArgs e)
+        private void cmbProgram_SelectedIndexChanged(object sender, EventArgs e)
         {
-            UpdateClock();
+            if (cmbProgram.SelectedItem is ProgramItem selectedProgram)
+            {
+                txtProgramId.Text = selectedProgram.ProgramCode;
+                lblProgramTitle.Text = selectedProgram.ProgramName;
+                SetPicturePreview(selectedProgram.ImagePath);
+            }
         }
 
-        private void UpdateClock()
+        private void TimerClock_Tick(object sender, EventArgs e)
         {
             lblClock.Text = DateTime.Now.ToString("HH:mm:ss");
         }
@@ -477,8 +550,8 @@ namespace TVSchedulingSystem
         private void RefreshGrid(int channelId)
         {
             Schedule[] schedules = _manager.GetSchedulesByChannel(channelId)
-                                           .OrderBy(s => s.StartTime)
-                                           .ToArray();
+                .OrderBy(s => s.StartTime)
+                .ToArray();
 
             dataGridView1.Columns.Clear();
             dataGridView1.Rows.Clear();
@@ -497,28 +570,30 @@ namespace TVSchedulingSystem
             dataGridView1.Columns.Add("StartTime", "Start Time");
             dataGridView1.Columns.Add("EndTime", "End Time");
 
-            DataGridViewImageColumn previewColumn = new DataGridViewImageColumn();
-            previewColumn.Name = "Preview";
-            previewColumn.HeaderText = "Preview";
-            previewColumn.ImageLayout = DataGridViewImageCellLayout.Zoom;
-            previewColumn.Width = 120;
+            DataGridViewImageColumn previewColumn = new DataGridViewImageColumn
+            {
+                Name = "Preview",
+                HeaderText = "Preview",
+                ImageLayout = DataGridViewImageCellLayout.Zoom,
+                Width = 120
+            };
             dataGridView1.Columns.Add(previewColumn);
 
             dataGridView1.Columns.Add("ImagePath", "ImagePath");
             dataGridView1.Columns["ImagePath"].Visible = false;
 
-            for (int i = 0; i < schedules.Length; i++)
+            foreach (Schedule schedule in schedules)
             {
-                Image image = LoadImageSafe(schedules[i].ImagePath);
+                Image image = LoadImageSafe(schedule.ImagePath);
 
                 dataGridView1.Rows.Add(
-                    schedules[i].ScheduleID,
-                    schedules[i].ChannelID,
-                    schedules[i].ProgramID,
-                    schedules[i].StartTime.ToString("dd/MM/yyyy HH:mm"),
-                    schedules[i].EndTime.ToString("dd/MM/yyyy HH:mm"),
+                    schedule.ScheduleID,
+                    schedule.ChannelID,
+                    schedule.ProgramID,
+                    schedule.StartTime.ToString("dd/MM/yyyy HH:mm"),
+                    schedule.EndTime.ToString("dd/MM/yyyy HH:mm"),
                     image,
-                    schedules[i].ImagePath
+                    schedule.ImagePath
                 );
             }
 
@@ -529,7 +604,15 @@ namespace TVSchedulingSystem
             }
             else
             {
-                ClearPreview();
+                if (cmbProgram.SelectedItem is ProgramItem selectedProgram)
+                {
+                    lblProgramTitle.Text = selectedProgram.ProgramName;
+                    SetPicturePreview(selectedProgram.ImagePath);
+                }
+                else
+                {
+                    ClearPreview();
+                }
             }
         }
 
@@ -552,58 +635,35 @@ namespace TVSchedulingSystem
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(txtProgramId.Text))
+                if (!(cmbProgram.SelectedItem is ProgramItem selectedProgram))
                 {
-                    MessageBox.Show("Program ID is required.");
+                    MessageBox.Show("Please select a program.");
                     return;
                 }
 
                 int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
-                string programId = txtProgramId.Text.Trim();
                 int duration = (int)numDuration.Value;
                 DateTime requestedStart = NormalizeToMinute(dtpStartTime.Value);
-                DateTime requestedEnd = requestedStart.AddMinutes(duration);
-
-                // AI agent checks conflict before adding
-                if (HasConflict(channelId, requestedStart, requestedEnd))
-                {
-                    RunAiAgentAnalysis(channelId, requestedStart, duration, true);
-                    MessageBox.Show("Conflict detected. The AI agent has prepared a recommendation.");
-                    return;
-                }
-
                 int scheduleId = GetNextScheduleId();
 
                 bool result = _manager.AddSchedule(
                     scheduleId,
                     channelId,
-                    programId,
+                    selectedProgram.ProgramCode,
                     requestedStart,
                     duration,
-                    selectedImagePath
+                    selectedProgram.ImagePath
                 );
 
                 if (result)
                 {
                     MessageBox.Show("Schedule added successfully.");
-                    txtAiOutput.Text =
-                        "AI Agent:" + Environment.NewLine +
-                        "Schedule added successfully." + Environment.NewLine +
-                        "Channel: " + channelId + Environment.NewLine +
-                        "Start Time: " + requestedStart.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                        "Duration: " + duration + " minutes";
-
                     RefreshGrid(channelId);
-
-                    txtProgramId.Clear();
                     numDuration.Value = 30;
-                    selectedImagePath = string.Empty;
-                    ClearAiRecommendation();
                 }
                 else
                 {
-                    RunAiAgentAnalysis(channelId, requestedStart, duration, true);
-                    MessageBox.Show("The schedule could not be added. The AI agent has prepared a recommendation.");
+                    MessageBox.Show("The schedule could not be added. It may conflict with an existing schedule.");
                 }
             }
             catch (Exception ex)
@@ -624,16 +684,23 @@ namespace TVSchedulingSystem
             int requiredDuration = (int)numDuration.Value;
             DateTime requestedStart = NormalizeToMinute(dtpStartTime.Value);
 
-            DateTime suggestedTime = FindBestSlotFrom(channelId, requiredDuration, requestedStart);
-            dtpStartTime.Value = suggestedTime;
+            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId)
+                .OrderBy(s => s.StartTime)
+                .ToArray();
 
-            txtAiOutput.Text =
-                "AI Agent Suggestion:" + Environment.NewLine +
-                "Channel: " + channelId + Environment.NewLine +
-                "Suggested Start Time: " + suggestedTime.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Reason: earliest non-conflicting slot on the current channel.";
+            DateTime candidate = requestedStart;
 
-            MessageBox.Show("Suggested next available slot: " + suggestedTime.ToString("dd/MM/yyyy HH:mm"));
+            foreach (Schedule schedule in schedules)
+            {
+                if (candidate.AddMinutes(requiredDuration) <= schedule.StartTime)
+                    break;
+
+                if (candidate < schedule.EndTime)
+                    candidate = schedule.EndTime;
+            }
+
+            dtpStartTime.Value = candidate;
+            AppendChat("AI", "Suggested next available slot on channel " + channelId + ": " + candidate.ToString("dd/MM/yyyy HH:mm"));
         }
 
         private void btnRemove_Click(object sender, EventArgs e)
@@ -647,14 +714,13 @@ namespace TVSchedulingSystem
                 }
 
                 int channelId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["ChannelID"].Value);
-                DateTime startTime = Convert.ToDateTime(dataGridView1.CurrentRow.Cells["StartTime"].Value);
+                DateTime startTime = DateTime.Parse(dataGridView1.CurrentRow.Cells["StartTime"].Value.ToString());
 
                 bool result = _manager.RemoveSchedule(channelId, startTime);
 
                 if (result)
                 {
                     MessageBox.Show("Schedule removed successfully.");
-                    txtAiOutput.Text = "AI Agent: Schedule removed successfully.";
                     RefreshGrid(channelId);
                 }
                 else
@@ -668,281 +734,92 @@ namespace TVSchedulingSystem
             }
         }
 
-        private void btnSelectImage_Click(object sender, EventArgs e)
+        private async void btnSendAi_Click(object sender, EventArgs e)
         {
-            using (OpenFileDialog dialog = new OpenFileDialog())
+            await SendCurrentMessageAsync();
+        }
+
+        private async void txtChatInput_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
             {
-                dialog.Title = "Select Preview Image";
-                dialog.Filter = "Image Files|*.jpg;*.jpeg;*.png;*.bmp;*.gif";
-
-                if (dialog.ShowDialog() == DialogResult.OK)
-                {
-                    selectedImagePath = dialog.FileName;
-                    SetPicturePreview(selectedImagePath);
-
-                    if (!string.IsNullOrWhiteSpace(txtProgramId.Text))
-                    {
-                        lblProgramTitle.Text = txtProgramId.Text.Trim();
-                    }
-                    else
-                    {
-                        lblProgramTitle.Text = "Program Preview";
-                    }
-                }
+                e.SuppressKeyPress = true;
+                await SendCurrentMessageAsync();
             }
         }
 
-        private void btnAiSuggestSlot_Click(object sender, EventArgs e)
+        private async System.Threading.Tasks.Task SendCurrentMessageAsync()
         {
-            if (cmbChannel.SelectedItem == null)
-            {
-                txtAiOutput.Text = "AI Agent: Please select a channel first.";
+            string userMessage = txtChatInput.Text.Trim();
+
+            if (string.IsNullOrWhiteSpace(userMessage))
                 return;
+
+            AppendChat("You", userMessage);
+            txtChatInput.Clear();
+
+            try
+            {
+                btnSendAi.Enabled = false;
+                AppendChat("AI", "Thinking...");
+
+                int selectedChannel = cmbChannel.SelectedItem != null
+                    ? Convert.ToInt32(cmbChannel.SelectedItem)
+                    : 1;
+
+                DateTime selectedStart = NormalizeToMinute(dtpStartTime.Value);
+                int selectedDuration = (int)numDuration.Value;
+
+                string aiReply = await _aiService.SendChatAsync(
+                    _conversation,
+                    userMessage,
+                    _manager.GetAllSchedules(),
+                    selectedChannel,
+                    selectedStart,
+                    selectedDuration
+                );
+
+                RemoveLastThinkingMessage();
+
+                _conversation.Add(new ChatTurn { Role = "user", Content = userMessage });
+                _conversation.Add(new ChatTurn { Role = "assistant", Content = aiReply });
+
+                AppendChat("AI", aiReply);
+            }
+            catch (Exception ex)
+            {
+                RemoveLastThinkingMessage();
+                AppendChat("AI", "Error: " + ex.Message);
+            }
+            finally
+            {
+                btnSendAi.Enabled = true;
+            }
+        }
+
+        private void RemoveLastThinkingMessage()
+        {
+            string target = "AI: Thinking..." + Environment.NewLine + Environment.NewLine;
+
+            if (txtAiChat.Text.EndsWith(target))
+            {
+                txtAiChat.Text = txtAiChat.Text.Substring(0, txtAiChat.Text.Length - target.Length);
+            }
+            else
+            {
+                txtAiChat.Text = txtAiChat.Text.Replace(target, string.Empty);
             }
 
-            int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
-            int duration = Convert.ToInt32(numDuration.Value);
-            DateTime requestedStart = NormalizeToMinute(dtpStartTime.Value);
-
-            DateTime bestSlot = FindBestSlotFrom(channelId, duration, requestedStart);
-            dtpStartTime.Value = bestSlot;
-
-            _recommendedChannel = channelId;
-            _recommendedStartTime = bestSlot;
-            _recommendedDuration = duration;
-            _recommendedReason = "earliest non-conflicting slot on the selected channel";
-            _hasAiRecommendation = true;
-
-            txtAiOutput.Text =
-                "AI Agent Analysis:" + Environment.NewLine +
-                "Requested Channel: " + channelId + Environment.NewLine +
-                "Requested Start: " + requestedStart.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Duration: " + duration + " minutes" + Environment.NewLine + Environment.NewLine +
-                "Recommendation:" + Environment.NewLine +
-                "Stay on Channel " + channelId + " at " + bestSlot.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Reason: " + _recommendedReason + ".";
+            txtAiChat.SelectionStart = txtAiChat.TextLength;
+            txtAiChat.ScrollToCaret();
         }
 
-        private void btnAiRecommendChannel_Click(object sender, EventArgs e)
+        private void AppendChat(string speaker, string message)
         {
-            int duration = Convert.ToInt32(numDuration.Value);
-            DateTime requestedStart = NormalizeToMinute(dtpStartTime.Value);
-
-            Recommendation recommendation = FindBestChannelAndSlot(duration, requestedStart);
-
-            _recommendedChannel = recommendation.ChannelId;
-            _recommendedStartTime = recommendation.StartTime;
-            _recommendedDuration = duration;
-            _recommendedReason = recommendation.Reason;
-            _hasAiRecommendation = true;
-
-            cmbChannel.SelectedItem = recommendation.ChannelId;
-            dtpStartTime.Value = recommendation.StartTime;
-
-            txtAiOutput.Text =
-                "AI Agent Analysis:" + Environment.NewLine +
-                "Requested Start: " + requestedStart.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Duration: " + duration + " minutes" + Environment.NewLine + Environment.NewLine +
-                "Recommendation:" + Environment.NewLine +
-                "Best Channel: " + recommendation.ChannelId + Environment.NewLine +
-                "Best Time: " + recommendation.StartTime.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Reason: " + recommendation.Reason + ".";
+            txtAiChat.AppendText($"{speaker}: {message}{Environment.NewLine}{Environment.NewLine}");
+            txtAiChat.SelectionStart = txtAiChat.TextLength;
+            txtAiChat.ScrollToCaret();
         }
-
-        private void btnApplyAiRecommendation_Click(object sender, EventArgs e)
-        {
-            if (!_hasAiRecommendation)
-            {
-                txtAiOutput.Text =
-                    "AI Agent:" + Environment.NewLine +
-                    "There is no recommendation to apply yet.";
-                return;
-            }
-
-            cmbChannel.SelectedItem = _recommendedChannel;
-            dtpStartTime.Value = _recommendedStartTime;
-            numDuration.Value = Math.Max(numDuration.Minimum, Math.Min(numDuration.Maximum, _recommendedDuration));
-
-            txtAiOutput.Text =
-                "AI Agent:" + Environment.NewLine +
-                "Recommendation applied successfully." + Environment.NewLine +
-                "Channel: " + _recommendedChannel + Environment.NewLine +
-                "Start Time: " + _recommendedStartTime.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Duration: " + _recommendedDuration + " minutes" + Environment.NewLine +
-                "Reason: " + _recommendedReason + Environment.NewLine +
-                "You may now click Add Schedule to confirm.";
-        }
-
-        // =========================
-        // AI AGENT LOGIC
-        // =========================
-
-        private void RunAiAgentAnalysis(int requestedChannel, DateTime requestedStart, int durationMinutes, bool conflictDetected)
-        {
-            Recommendation sameChannelRecommendation = new Recommendation
-            {
-                ChannelId = requestedChannel,
-                StartTime = FindBestSlotFrom(requestedChannel, durationMinutes, requestedStart),
-                Reason = "earliest non-conflicting slot on the same channel"
-            };
-
-            Recommendation bestOverallRecommendation = FindBestChannelAndSlot(durationMinutes, requestedStart);
-
-            DateTime requestedEnd = requestedStart.AddMinutes(durationMinutes);
-
-            _recommendedChannel = bestOverallRecommendation.ChannelId;
-            _recommendedStartTime = bestOverallRecommendation.StartTime;
-            _recommendedDuration = durationMinutes;
-            _recommendedReason = bestOverallRecommendation.Reason;
-            _hasAiRecommendation = true;
-
-            if (!conflictDetected)
-            {
-                txtAiOutput.Text =
-                    "AI Agent Analysis:" + Environment.NewLine +
-                    "Requested Channel: " + requestedChannel + Environment.NewLine +
-                    "Requested Start: " + requestedStart.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                    "Duration: " + durationMinutes + " minutes" + Environment.NewLine + Environment.NewLine +
-                    "Result:" + Environment.NewLine +
-                    "No conflict detected." + Environment.NewLine + Environment.NewLine +
-                    "Recommendation:" + Environment.NewLine +
-                    "Current selection is valid." + Environment.NewLine +
-                    "Reason: the requested slot fits without overlapping any existing programme.";
-                return;
-            }
-
-            txtAiOutput.Text =
-                "AI Agent Analysis:" + Environment.NewLine +
-                "Requested Channel: " + requestedChannel + Environment.NewLine +
-                "Requested Start: " + requestedStart.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Requested End: " + requestedEnd.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Duration: " + durationMinutes + " minutes" + Environment.NewLine + Environment.NewLine +
-                "Result:" + Environment.NewLine +
-                "Conflict detected with an existing schedule." + Environment.NewLine + Environment.NewLine +
-                "Same-Channel Alternative:" + Environment.NewLine +
-                "Channel " + sameChannelRecommendation.ChannelId + " at " +
-                sameChannelRecommendation.StartTime.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine + Environment.NewLine +
-                "Best Overall Recommendation:" + Environment.NewLine +
-                "Move to Channel " + bestOverallRecommendation.ChannelId + " at " +
-                bestOverallRecommendation.StartTime.ToString("dd/MM/yyyy HH:mm") + Environment.NewLine +
-                "Reason: " + bestOverallRecommendation.Reason + "." + Environment.NewLine + Environment.NewLine +
-                "Click 'Apply AI Recommendation' to use this suggestion.";
-        }
-
-        private bool HasConflict(int channelId, DateTime newStart, DateTime newEnd)
-        {
-            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId);
-
-            for (int i = 0; i < schedules.Length; i++)
-            {
-                DateTime existingStart = NormalizeToMinute(schedules[i].StartTime);
-                DateTime existingEnd = NormalizeToMinute(schedules[i].EndTime);
-
-                if (newStart < existingEnd && newEnd > existingStart)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private DateTime FindBestSlotFrom(int channelId, int durationMinutes, DateTime preferredStart)
-        {
-            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId)
-                                           .OrderBy(s => s.StartTime)
-                                           .ToArray();
-
-            DateTime candidate = NormalizeToMinute(preferredStart);
-
-            if (schedules.Length == 0)
-                return candidate;
-
-            for (int i = 0; i < schedules.Length; i++)
-            {
-                Schedule current = schedules[i];
-                DateTime existingStart = NormalizeToMinute(current.StartTime);
-                DateTime existingEnd = NormalizeToMinute(current.EndTime);
-
-                if (candidate.AddMinutes(durationMinutes) <= existingStart)
-                {
-                    return candidate;
-                }
-
-                if (candidate < existingEnd)
-                {
-                    candidate = existingEnd;
-                }
-            }
-
-            return candidate;
-        }
-
-        private Recommendation FindBestChannelAndSlot(int durationMinutes, DateTime preferredStart)
-        {
-            Recommendation best = new Recommendation
-            {
-                ChannelId = 1,
-                StartTime = FindBestSlotFrom(1, durationMinutes, preferredStart),
-                Reason = ""
-            };
-
-            long bestDelayMinutes = Math.Abs((long)(best.StartTime - preferredStart).TotalMinutes);
-            best.Reason = "earliest non-conflicting slot with minimal delay from the requested start time";
-
-            for (int channel = 2; channel <= 3; channel++)
-            {
-                DateTime candidateTime = FindBestSlotFrom(channel, durationMinutes, preferredStart);
-                long candidateDelayMinutes = Math.Abs((long)(candidateTime - preferredStart).TotalMinutes);
-
-                if (candidateTime < best.StartTime)
-                {
-                    best.ChannelId = channel;
-                    best.StartTime = candidateTime;
-                    bestDelayMinutes = candidateDelayMinutes;
-                    best.Reason = "earliest non-conflicting slot across all channels";
-                }
-                else if (candidateTime == best.StartTime && candidateDelayMinutes < bestDelayMinutes)
-                {
-                    best.ChannelId = channel;
-                    best.StartTime = candidateTime;
-                    bestDelayMinutes = candidateDelayMinutes;
-                    best.Reason = "same earliest slot but with smaller scheduling delay";
-                }
-            }
-
-            if (best.StartTime == preferredStart)
-            {
-                best.Reason = "requested slot is already valid and does not conflict";
-            }
-
-            return best;
-        }
-
-        private DateTime NormalizeToMinute(DateTime value)
-        {
-            return new DateTime(
-                value.Year,
-                value.Month,
-                value.Day,
-                value.Hour,
-                value.Minute,
-                0
-            );
-        }
-
-        private void ClearAiRecommendation()
-        {
-            _recommendedChannel = -1;
-            _recommendedStartTime = DateTime.MinValue;
-            _recommendedDuration = 0;
-            _recommendedReason = string.Empty;
-            _hasAiRecommendation = false;
-        }
-
-        // =========================
-        // EXISTING UI/HELPERS
-        // =========================
 
         private void dataGridView1_SelectionChanged(object sender, EventArgs e)
         {
@@ -956,10 +833,20 @@ namespace TVSchedulingSystem
 
             try
             {
-                string programName = Convert.ToString(dataGridView1.CurrentRow.Cells["ProgramID"].Value);
+                string programId = Convert.ToString(dataGridView1.CurrentRow.Cells["ProgramID"].Value);
                 string imagePath = Convert.ToString(dataGridView1.CurrentRow.Cells["ImagePath"].Value);
 
-                lblProgramTitle.Text = string.IsNullOrWhiteSpace(programName) ? "Program Preview" : programName;
+                ProgramItem matchedProgram = _programItems.FirstOrDefault(p => p.ProgramCode == programId);
+
+                if (matchedProgram != null)
+                {
+                    lblProgramTitle.Text = matchedProgram.ProgramName;
+                }
+                else
+                {
+                    lblProgramTitle.Text = string.IsNullOrWhiteSpace(programId) ? "Program Preview" : programId;
+                }
+
                 SetPicturePreview(imagePath);
             }
             catch
@@ -973,10 +860,10 @@ namespace TVSchedulingSystem
             Schedule[] allSchedules = _manager.GetAllSchedules();
             int maxId = 0;
 
-            for (int i = 0; i < allSchedules.Length; i++)
+            foreach (Schedule schedule in allSchedules)
             {
-                if (allSchedules[i].ScheduleID > maxId)
-                    maxId = allSchedules[i].ScheduleID;
+                if (schedule.ScheduleID > maxId)
+                    maxId = schedule.ScheduleID;
             }
 
             return maxId + 1;
@@ -1003,20 +890,19 @@ namespace TVSchedulingSystem
                 oldImage.Dispose();
             }
 
-            if (!string.IsNullOrWhiteSpace(imagePath) && File.Exists(imagePath))
-                picturePreview.Image = LoadImageSafe(imagePath);
-            else
-                picturePreview.Image = null;
+            picturePreview.Image = LoadImageSafe(imagePath);
         }
 
         private Image LoadImageSafe(string imagePath)
         {
-            if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
-                return null;
-
             try
             {
-                using (FileStream stream = new FileStream(imagePath, FileMode.Open, FileAccess.Read))
+                string resolvedPath = ResolveImagePath(imagePath);
+
+                if (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+                    return null;
+
+                using (FileStream stream = new FileStream(resolvedPath, FileMode.Open, FileAccess.Read))
                 using (Image temp = Image.FromStream(stream))
                 {
                     return new Bitmap(temp);
@@ -1026,6 +912,37 @@ namespace TVSchedulingSystem
             {
                 return null;
             }
+        }
+
+        private string ResolveImagePath(string imagePath)
+        {
+            if (string.IsNullOrWhiteSpace(imagePath))
+                return string.Empty;
+
+            if (Path.IsPathRooted(imagePath))
+                return imagePath;
+
+            string startupPath = Application.StartupPath;
+            string combinedPath = Path.Combine(startupPath, imagePath);
+            if (File.Exists(combinedPath))
+                return combinedPath;
+
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            combinedPath = Path.Combine(baseDirectory, imagePath);
+            if (File.Exists(combinedPath))
+                return combinedPath;
+
+            string currentDirectory = Directory.GetCurrentDirectory();
+            combinedPath = Path.Combine(currentDirectory, imagePath);
+            if (File.Exists(combinedPath))
+                return combinedPath;
+
+            return string.Empty;
+        }
+
+        private DateTime NormalizeToMinute(DateTime value)
+        {
+            return new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, 0);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -1052,34 +969,5 @@ namespace TVSchedulingSystem
             login.Show();
             Close();
         }
-
-        private class Recommendation
-        {
-            public int ChannelId { get; set; }
-            public DateTime StartTime { get; set; }
-            public string Reason { get; set; }
-        }
-
-        private DataGridView dataGridView1;
-        private TableLayoutPanel tableLayoutPanel1;
-        private Label label1;
-        private TableLayoutPanel tableLayoutPanel2;
-        private TextBox txtProgramId;
-        private DateTimePicker dtpStartTime;
-        private NumericUpDown numDuration;
-        private FlowLayoutPanel flowLayoutPanel1;
-        private Button btnSuggest;
-        private Button btnAdd;
-        private ComboBox cmbChannel;
-        private Label label2;
-        private Label label3;
-        private Label label4;
-        private Label label5;
-        private Panel panel1;
-        private PictureBox picturePreview;
-        private TextBox txtAiOutput;
-        private Label lblProgramTitle;
-        private Label lblClock;
-        private Button btnRemove;
     }
 }

@@ -47,31 +47,19 @@ namespace TVSchedulingSystem.Services
             int durationMinutes,
             string imagePath)
         {
-            if (string.IsNullOrWhiteSpace(programId))
-                throw new ArgumentException("Program ID is required.");
+            ValidateScheduleInput(scheduleId, channelId, programId, startTime, durationMinutes);
 
-            if (durationMinutes <= 0)
-                throw new ArgumentException("Duration must be greater than zero.");
-
-            startTime = new DateTime(
-                startTime.Year,
-                startTime.Month,
-                startTime.Day,
-                startTime.Hour,
-                startTime.Minute,
-                0
-            );
-
-            DateTime endTime = startTime.AddMinutes(durationMinutes);
+            DateTime normalizedStartTime = NormalizeToMinute(startTime);
+            DateTime endTime = normalizedStartTime.AddMinutes(durationMinutes);
 
             Schedule schedule = new Schedule
             {
                 ScheduleID = scheduleId,
                 ChannelID = channelId,
                 ProgramID = programId.Trim(),
-                StartTime = startTime,
+                StartTime = normalizedStartTime,
                 EndTime = endTime,
-                ImagePath = imagePath ?? string.Empty
+                ImagePath = string.IsNullOrWhiteSpace(imagePath) ? string.Empty : imagePath.Trim()
             };
 
             bool added = _storage.AddSchedule(schedule);
@@ -85,44 +73,35 @@ namespace TVSchedulingSystem.Services
         }
 
         // ---------------------------------
-        // REMOVE
+        // REMOVE SCHEDULE
         // ---------------------------------
         public bool RemoveSchedule(int channelId, DateTime startTime)
         {
-            startTime = new DateTime(
-                startTime.Year,
-                startTime.Month,
-                startTime.Day,
-                startTime.Hour,
-                startTime.Minute,
-                0
-            );
+            if (channelId <= 0)
+                throw new ArgumentException("Channel ID must be greater than zero.");
 
-            bool removed = _storage.RemoveSchedule(channelId, startTime);
+            DateTime normalizedStartTime = NormalizeToMinute(startTime);
+
+            bool removed = _storage.RemoveSchedule(channelId, normalizedStartTime);
 
             if (removed && _useDatabase)
             {
-                _repository.DeleteSchedule(channelId, startTime);
+                _repository.DeleteSchedule(channelId, normalizedStartTime);
             }
 
             return removed;
         }
 
         // ---------------------------------
-        // GET SCHEDULE
+        // GET SINGLE SCHEDULE
         // ---------------------------------
         public Schedule GetSchedule(int channelId, DateTime startTime)
         {
-            startTime = new DateTime(
-                startTime.Year,
-                startTime.Month,
-                startTime.Day,
-                startTime.Hour,
-                startTime.Minute,
-                0
-            );
+            if (channelId <= 0)
+                throw new ArgumentException("Channel ID must be greater than zero.");
 
-            return _storage.GetSchedule(channelId, startTime);
+            DateTime normalizedStartTime = NormalizeToMinute(startTime);
+            return _storage.GetSchedule(channelId, normalizedStartTime);
         }
 
         // ---------------------------------
@@ -130,6 +109,9 @@ namespace TVSchedulingSystem.Services
         // ---------------------------------
         public Schedule[] GetSchedulesByChannel(int channelId)
         {
+            if (channelId <= 0)
+                throw new ArgumentException("Channel ID must be greater than zero.");
+
             return _storage.GetSchedulesByChannel(channelId);
         }
 
@@ -142,11 +124,63 @@ namespace TVSchedulingSystem.Services
         }
 
         // ---------------------------------
-        // CLEAR
+        // CLEAR STORAGE ONLY
         // ---------------------------------
         public void Clear()
         {
             _storage.Clear();
+        }
+
+        // ---------------------------------
+        // VALIDATION
+        // ---------------------------------
+        private void ValidateScheduleInput(
+            int scheduleId,
+            int channelId,
+            string programId,
+            DateTime startTime,
+            int durationMinutes)
+        {
+            if (scheduleId <= 0)
+                throw new ArgumentException("Schedule ID must be greater than zero.");
+
+            if (channelId <= 0)
+                throw new ArgumentException("Channel ID must be greater than zero.");
+
+            if (string.IsNullOrWhiteSpace(programId))
+                throw new ArgumentException("Program name is required.");
+
+            programId = programId.Trim();
+
+            if (programId.Length < 2)
+                throw new ArgumentException("Program name must be at least 2 characters long.");
+
+            if (programId.Length > 100)
+                throw new ArgumentException("Program name cannot exceed 100 characters.");
+
+            if (durationMinutes <= 0)
+                throw new ArgumentException("Duration must be greater than zero.");
+
+            if (durationMinutes > 600)
+                throw new ArgumentException("Duration cannot exceed 600 minutes.");
+
+            if (startTime == DateTime.MinValue)
+                throw new ArgumentException("A valid start time is required.");
+        }
+
+        // ---------------------------------
+        // NORMALIZE TIME
+        // ---------------------------------
+        private DateTime NormalizeToMinute(DateTime dateTime)
+        {
+            return new DateTime(
+                dateTime.Year,
+                dateTime.Month,
+                dateTime.Day,
+                dateTime.Hour,
+                dateTime.Minute,
+                0
+            );
         }
     }
 }
