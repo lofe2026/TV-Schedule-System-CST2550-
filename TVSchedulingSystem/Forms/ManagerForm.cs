@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 using TVSchedulingSystem.Models;
+using TVSchedulingSystem.Repositories;
 using TVSchedulingSystem.Services;
 
 namespace TVSchedulingSystem.Forms
@@ -10,44 +13,126 @@ namespace TVSchedulingSystem.Forms
     public partial class ManagerForm : Form
     {
         private readonly ScheduleManager _manager;
-        private System.Windows.Forms.Timer _clockTimer;
-        private string _selectedImagePath = string.Empty;
+        private readonly ProgramRepository _programRepository;
+
+        private List<ProgramItem> _programItems = new List<ProgramItem>();
+        private string _selectedPreviewPath = string.Empty;
+
+        private readonly System.Windows.Forms.Timer timerClock = new System.Windows.Forms.Timer();
 
         public ManagerForm()
         {
             InitializeComponent();
 
             _manager = new ScheduleManager();
+            _programRepository = new ProgramRepository();
 
-            btnAdd.Click += btnAdd_Click;
-            btnSuggest.Click += btnSuggest_Click;
-            btnSelectImage.Click += btnSelectImage_Click;
-            cmbChannel.SelectedIndexChanged += cmbChannel_SelectedIndexChanged;
-            dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
-            btnBack.Click += btnBack_Click;
-        }
+            timerClock.Interval = 1000;
+            timerClock.Tick += TimerClock_Tick;
+            timerClock.Start();
 
-        private void ManagerForm_Load(object sender, EventArgs e)
-        {
-            SetupForm();
-            StartClock();
-            LoadChannels();
-            LoadSchedules();
-        }
-
-        private void SetupForm()
-        {
-            dtpStartTime.Format = DateTimePickerFormat.Custom;
-            dtpStartTime.CustomFormat = "dd/MM/yyyy HH:mm";
+            cmbChannel.Items.Clear();
+            cmbChannel.Items.Add(1);
+            cmbChannel.Items.Add(2);
+            cmbChannel.Items.Add(3);
+            cmbChannel.SelectedIndex = 0;
 
             numDuration.Minimum = 1;
             numDuration.Maximum = 600;
             numDuration.Value = 30;
 
-            cmbChannel.DropDownStyle = ComboBoxStyle.DropDownList;
+            dtpStartTime.Format = DateTimePickerFormat.Custom;
+            dtpStartTime.CustomFormat = "dd/MM/yyyy HH:mm";
 
-            lblProgramTitle.Text = "Program Preview";
-            lblClock.Text = "00:00:00";
+            txtProgramId.ReadOnly = true;
+            cmbChannel.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbProgram.DropDownStyle = ComboBoxStyle.DropDownList;
+
+            dataGridView1.SelectionChanged += dataGridView1_SelectionChanged;
+            cmbChannel.SelectedIndexChanged += cmbChannel_SelectedIndexChanged;
+            cmbProgram.SelectedIndexChanged += cmbProgram_SelectedIndexChanged;
+
+            btnAdd.Click += btnAdd_Click;
+            btnSuggest.Click += btnSuggest_Click;
+            btnRemove.Click += btnRemove_Click;
+            btnSelectImage.Click += btnSelectImage_Click;
+            btnAddProgram.Click += btnAddProgram_Click;
+            btnBack.Click += btnBack_Click;
+        }
+
+        private void ManagerForm_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                LoadPrograms();
+                _manager.LoadFromDatabase();
+
+                if (cmbChannel.SelectedItem != null)
+                {
+                    int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
+                    RefreshGrid(channelId);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error loading ManagerForm: " + ex.Message);
+            }
+        }
+
+        private void LoadPrograms()
+        {
+            _programItems = _programRepository.GetPrograms();
+            cmbProgram.Items.Clear();
+
+            foreach (ProgramItem item in _programItems)
+            {
+                cmbProgram.Items.Add(item);
+            }
+
+            if (cmbProgram.Items.Count > 0)
+            {
+                cmbProgram.SelectedIndex = 0;
+            }
+            else
+            {
+                txtProgramId.Clear();
+                ClearPreview();
+            }
+        }
+
+        private void cmbProgram_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbProgram.SelectedItem is ProgramItem selectedProgram)
+            {
+                txtProgramId.Text = selectedProgram.ProgramCode;
+                lblProgramTitle.Text = selectedProgram.ProgramName;
+                SetPicturePreview(selectedProgram.ImagePath);
+                _selectedPreviewPath = string.Empty;
+            }
+        }
+
+        private void TimerClock_Tick(object sender, EventArgs e)
+        {
+            lblClock.Text = DateTime.Now.ToString("HH:mm:ss");
+        }
+
+        private void cmbChannel_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbChannel.SelectedItem != null)
+            {
+                int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
+                RefreshGrid(channelId);
+            }
+        }
+
+        private void RefreshGrid(int channelId)
+        {
+            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId)
+                .OrderBy(s => s.StartTime)
+                .ToArray();
+
+            dataGridView1.Columns.Clear();
+            dataGridView1.Rows.Clear();
 
             dataGridView1.AutoGenerateColumns = false;
             dataGridView1.AllowUserToAddRows = false;
@@ -55,56 +140,7 @@ namespace TVSchedulingSystem.Forms
             dataGridView1.ReadOnly = true;
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dataGridView1.MultiSelect = false;
-        }
-
-        private void StartClock()
-        {
-            _clockTimer = new System.Windows.Forms.Timer();
-            _clockTimer.Interval = 1000;
-            _clockTimer.Tick += ClockTimer_Tick;
-            _clockTimer.Start();
-            UpdateClock();
-        }
-
-        private void ClockTimer_Tick(object sender, EventArgs e)
-        {
-            UpdateClock();
-        }
-
-        private void UpdateClock()
-        {
-            lblClock.Text = DateTime.Now.ToString("HH:mm:ss");
-        }
-
-        private void LoadChannels()
-        {
-            cmbChannel.Items.Clear();
-
-            cmbChannel.Items.Add(1);
-            cmbChannel.Items.Add(2);
-            cmbChannel.Items.Add(3);
-
-            if (cmbChannel.Items.Count > 0)
-            {
-                cmbChannel.SelectedIndex = 0;
-            }
-        }
-
-        private void cmbChannel_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            LoadSchedules();
-        }
-
-        private void LoadSchedules()
-        {
-            if (cmbChannel.SelectedItem == null)
-                return;
-
-            int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
-            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId);
-
-            dataGridView1.Columns.Clear();
-            dataGridView1.Rows.Clear();
+            dataGridView1.RowTemplate.Height = 70;
 
             dataGridView1.Columns.Add("ScheduleID", "Schedule ID");
             dataGridView1.Columns.Add("ChannelID", "Channel");
@@ -112,27 +148,30 @@ namespace TVSchedulingSystem.Forms
             dataGridView1.Columns.Add("StartTime", "Start Time");
             dataGridView1.Columns.Add("EndTime", "End Time");
 
-            DataGridViewImageColumn previewColumn = new DataGridViewImageColumn();
-            previewColumn.Name = "Preview";
-            previewColumn.HeaderText = "Preview";
-            previewColumn.ImageLayout = DataGridViewImageCellLayout.Zoom;
+            DataGridViewImageColumn previewColumn = new DataGridViewImageColumn
+            {
+                Name = "Preview",
+                HeaderText = "Preview",
+                ImageLayout = DataGridViewImageCellLayout.Zoom,
+                Width = 120
+            };
             dataGridView1.Columns.Add(previewColumn);
 
             dataGridView1.Columns.Add("ImagePath", "ImagePath");
             dataGridView1.Columns["ImagePath"].Visible = false;
 
-            for (int i = 0; i < schedules.Length; i++)
+            foreach (Schedule schedule in schedules)
             {
-                Image image = LoadImageSafe(schedules[i].ImagePath);
+                Image image = LoadImageSafe(schedule.ImagePath);
 
                 dataGridView1.Rows.Add(
-                    schedules[i].ScheduleID,
-                    schedules[i].ChannelID,
-                    schedules[i].ProgramID,
-                    schedules[i].StartTime.ToString("dd/MM/yyyy HH:mm"),
-                    schedules[i].EndTime.ToString("dd/MM/yyyy HH:mm"),
+                    schedule.ScheduleID,
+                    schedule.ChannelID,
+                    schedule.ProgramID,
+                    schedule.StartTime.ToString("dd/MM/yyyy HH:mm"),
+                    schedule.EndTime.ToString("dd/MM/yyyy HH:mm"),
                     image,
-                    schedules[i].ImagePath
+                    schedule.ImagePath
                 );
             }
 
@@ -143,11 +182,71 @@ namespace TVSchedulingSystem.Forms
             }
             else
             {
-                ClearPreview();
+                if (cmbProgram.SelectedItem is ProgramItem selectedProgram)
+                {
+                    lblProgramTitle.Text = selectedProgram.ProgramName;
+                    SetPicturePreview(selectedProgram.ImagePath);
+                }
+                else
+                {
+                    ClearPreview();
+                }
             }
         }
 
         private void btnAdd_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (cmbChannel.SelectedItem == null)
+                {
+                    MessageBox.Show("Please select a channel.");
+                    return;
+                }
+
+                if (!(cmbProgram.SelectedItem is ProgramItem selectedProgram))
+                {
+                    MessageBox.Show("Please select a program.");
+                    return;
+                }
+
+                int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
+                int duration = (int)numDuration.Value;
+                DateTime requestedStart = NormalizeToMinute(dtpStartTime.Value);
+                int scheduleId = GetNextScheduleId();
+
+                string previewPathToUse = !string.IsNullOrWhiteSpace(_selectedPreviewPath)
+                    ? _selectedPreviewPath
+                    : selectedProgram.ImagePath;
+
+                bool result = _manager.AddSchedule(
+                    scheduleId,
+                    channelId,
+                    selectedProgram.ProgramCode,
+                    requestedStart,
+                    duration,
+                    previewPathToUse
+                );
+
+                if (result)
+                {
+                    MessageBox.Show("Schedule added successfully.");
+                    RefreshGrid(channelId);
+                    numDuration.Value = 30;
+                    _selectedPreviewPath = string.Empty;
+                }
+                else
+                {
+                    MessageBox.Show("The schedule could not be added. It may conflict with an existing schedule.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message);
+            }
+        }
+
+        private void btnSuggest_Click(object sender, EventArgs e)
         {
             if (cmbChannel.SelectedItem == null)
             {
@@ -155,91 +254,58 @@ namespace TVSchedulingSystem.Forms
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(txtProgramId.Text))
+            int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
+            int requiredDuration = (int)numDuration.Value;
+            DateTime requestedStart = NormalizeToMinute(dtpStartTime.Value);
+
+            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId)
+                .OrderBy(s => s.StartTime)
+                .ToArray();
+
+            DateTime candidate = requestedStart;
+
+            foreach (Schedule schedule in schedules)
             {
-                MessageBox.Show("Please enter a Program ID.");
-                return;
+                if (candidate.AddMinutes(requiredDuration) <= schedule.StartTime)
+                    break;
+
+                if (candidate < schedule.EndTime)
+                    candidate = schedule.EndTime;
             }
 
-            int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
-            string programId = txtProgramId.Text.Trim();
-            DateTime startTime = NormalizeToMinute(dtpStartTime.Value);
-            int durationMinutes = Convert.ToInt32(numDuration.Value);
+            dtpStartTime.Value = candidate;
+            MessageBox.Show("Suggested next available slot on channel " + channelId + ": " + candidate.ToString("dd/MM/yyyy HH:mm"));
+        }
 
-            int scheduleId = GetNextScheduleId();
-
-            bool added;
+        private void btnRemove_Click(object sender, EventArgs e)
+        {
             try
             {
-                added = _manager.AddSchedule(
-                    scheduleId,
-                    channelId,
-                    programId,
-                    startTime,
-                    durationMinutes,
-                    _selectedImagePath
-                );
+                if (dataGridView1.CurrentRow == null)
+                {
+                    MessageBox.Show("Please select a schedule to remove.");
+                    return;
+                }
+
+                int channelId = Convert.ToInt32(dataGridView1.CurrentRow.Cells["ChannelID"].Value);
+                DateTime startTime = DateTime.Parse(dataGridView1.CurrentRow.Cells["StartTime"].Value.ToString());
+
+                bool result = _manager.RemoveSchedule(channelId, startTime);
+
+                if (result)
+                {
+                    MessageBox.Show("Schedule removed successfully.");
+                    RefreshGrid(channelId);
+                }
+                else
+                {
+                    MessageBox.Show("Schedule not found.");
+                }
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error: " + ex.Message);
-                return;
             }
-
-            if (!added)
-            {
-                MessageBox.Show("Schedule could not be added. The slot may already exist or conflict with another schedule.");
-                return;
-            }
-
-            MessageBox.Show("Schedule added successfully.");
-            ClearInputsAfterAdd();
-            LoadSchedules();
-        }
-
-        private void btnSuggest_Click(object sender, EventArgs e)
-        {
-            if (cmbChannel.SelectedItem == null)
-            {
-                MessageBox.Show("Please select a channel first.");
-                return;
-            }
-
-            int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
-            int durationMinutes = Convert.ToInt32(numDuration.Value);
-
-            DateTime suggestedTime = FindBestSlot(channelId, durationMinutes);
-
-            dtpStartTime.Value = suggestedTime;
-            MessageBox.Show("Suggested next available slot: " + suggestedTime.ToString("dd/MM/yyyy HH:mm"));
-        }
-
-        private DateTime FindBestSlot(int channelId, int durationMinutes)
-        {
-            Schedule[] schedules = _manager.GetSchedulesByChannel(channelId);
-
-            DateTime now = DateTime.Now;
-            now = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
-
-            if (schedules.Length == 0)
-                return now;
-
-            for (int i = 0; i < schedules.Length; i++)
-            {
-                Schedule current = schedules[i];
-
-                if (now.AddMinutes(durationMinutes) <= current.StartTime)
-                {
-                    return now;
-                }
-
-                if (now < current.EndTime)
-                {
-                    now = current.EndTime;
-                }
-            }
-
-            return now;
         }
 
         private void btnSelectImage_Click(object sender, EventArgs e)
@@ -251,11 +317,14 @@ namespace TVSchedulingSystem.Forms
 
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    _selectedImagePath = dialog.FileName;
+                    _selectedPreviewPath = dialog.FileName;
+                    SetPicturePreview(_selectedPreviewPath);
 
-                    SetPicturePreview(_selectedImagePath);
-
-                    if (!string.IsNullOrWhiteSpace(txtProgramId.Text))
+                    if (cmbProgram.SelectedItem is ProgramItem selectedProgram)
+                    {
+                        lblProgramTitle.Text = selectedProgram.ProgramName;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(txtProgramId.Text))
                     {
                         lblProgramTitle.Text = txtProgramId.Text.Trim();
                     }
@@ -264,6 +333,61 @@ namespace TVSchedulingSystem.Forms
                         lblProgramTitle.Text = "Program Preview";
                     }
                 }
+            }
+        }
+
+        private void btnAddProgram_Click(object sender, EventArgs e)
+        {
+            string programCode = Prompt.ShowDialog("Enter Program Code:", "Add Program");
+            if (string.IsNullOrWhiteSpace(programCode))
+            {
+                MessageBox.Show("Program Code is required.");
+                return;
+            }
+
+            string programName = Prompt.ShowDialog("Enter Program Name:", "Add Program");
+            if (string.IsNullOrWhiteSpace(programName))
+            {
+                MessageBox.Show("Program Name is required.");
+                return;
+            }
+
+            string imagePath = string.Empty;
+
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Title = "Select Program Image";
+                dialog.Filter = "Image Files|*.jpg;*.jpeg;*.png;*.bmp;*.gif";
+
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    imagePath = dialog.FileName;
+                }
+            }
+
+            try
+            {
+                bool result = _programRepository.AddProgram(programCode.Trim(), programName.Trim(), imagePath);
+
+                if (result)
+                {
+                    MessageBox.Show("Program added successfully.");
+                    LoadPrograms();
+
+                    ProgramItem addedProgram = _programItems.FirstOrDefault(p => p.ProgramCode == programCode.Trim());
+                    if (addedProgram != null)
+                    {
+                        cmbProgram.SelectedItem = addedProgram;
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("A program with that code already exists.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error adding program: " + ex.Message);
             }
         }
 
@@ -277,19 +401,28 @@ namespace TVSchedulingSystem.Forms
             if (dataGridView1.CurrentRow == null)
                 return;
 
-            string programId = Convert.ToString(dataGridView1.CurrentRow.Cells["ProgramID"].Value);
-            string imagePath = Convert.ToString(dataGridView1.CurrentRow.Cells["ImagePath"].Value);
-
-            if (!string.IsNullOrWhiteSpace(programId))
+            try
             {
-                lblProgramTitle.Text = programId;
-            }
-            else
-            {
-                lblProgramTitle.Text = "Program Preview";
-            }
+                string programId = Convert.ToString(dataGridView1.CurrentRow.Cells["ProgramID"].Value);
+                string imagePath = Convert.ToString(dataGridView1.CurrentRow.Cells["ImagePath"].Value);
 
-            SetPicturePreview(imagePath);
+                ProgramItem matchedProgram = _programItems.FirstOrDefault(p => p.ProgramCode == programId);
+
+                if (matchedProgram != null)
+                {
+                    lblProgramTitle.Text = matchedProgram.ProgramName;
+                }
+                else
+                {
+                    lblProgramTitle.Text = string.IsNullOrWhiteSpace(programId) ? "Program Preview" : programId;
+                }
+
+                SetPicturePreview(imagePath);
+            }
+            catch
+            {
+                ClearPreview();
+            }
         }
 
         private int GetNextScheduleId()
@@ -297,30 +430,13 @@ namespace TVSchedulingSystem.Forms
             Schedule[] allSchedules = _manager.GetAllSchedules();
             int maxId = 0;
 
-            for (int i = 0; i < allSchedules.Length; i++)
+            foreach (Schedule schedule in allSchedules)
             {
-                if (allSchedules[i].ScheduleID > maxId)
-                {
-                    maxId = allSchedules[i].ScheduleID;
-                }
+                if (schedule.ScheduleID > maxId)
+                    maxId = schedule.ScheduleID;
             }
 
             return maxId + 1;
-        }
-
-        private void ClearInputsAfterAdd()
-        {
-            txtProgramId.Clear();
-            numDuration.Value = 30;
-            _selectedImagePath = string.Empty;
-            lblProgramTitle.Text = "Program Preview";
-
-            if (picturePreview.Image != null)
-            {
-                Image oldImage = picturePreview.Image;
-                picturePreview.Image = null;
-                oldImage.Dispose();
-            }
         }
 
         private void ClearPreview()
@@ -344,24 +460,19 @@ namespace TVSchedulingSystem.Forms
                 oldImage.Dispose();
             }
 
-            if (!string.IsNullOrWhiteSpace(imagePath) && File.Exists(imagePath))
-            {
-                picturePreview.Image = LoadImageSafe(imagePath);
-            }
-            else
-            {
-                picturePreview.Image = null;
-            }
+            picturePreview.Image = LoadImageSafe(imagePath);
         }
 
         private Image LoadImageSafe(string imagePath)
         {
-            if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
-                return null;
-
             try
             {
-                using (FileStream stream = new FileStream(imagePath, FileMode.Open, FileAccess.Read))
+                string resolvedPath = ResolveImagePath(imagePath);
+
+                if (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+                    return null;
+
+                using (FileStream stream = new FileStream(resolvedPath, FileMode.Open, FileAccess.Read))
                 using (Image temp = Image.FromStream(stream))
                 {
                     return new Bitmap(temp);
@@ -373,6 +484,32 @@ namespace TVSchedulingSystem.Forms
             }
         }
 
+        private string ResolveImagePath(string imagePath)
+        {
+            if (string.IsNullOrWhiteSpace(imagePath))
+                return string.Empty;
+
+            if (Path.IsPathRooted(imagePath))
+                return imagePath;
+
+            string startupPath = Application.StartupPath;
+            string combinedPath = Path.Combine(startupPath, imagePath);
+            if (File.Exists(combinedPath))
+                return combinedPath;
+
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            combinedPath = Path.Combine(baseDirectory, imagePath);
+            if (File.Exists(combinedPath))
+                return combinedPath;
+
+            string currentDirectory = Directory.GetCurrentDirectory();
+            combinedPath = Path.Combine(currentDirectory, imagePath);
+            if (File.Exists(combinedPath))
+                return combinedPath;
+
+            return string.Empty;
+        }
+
         private DateTime NormalizeToMinute(DateTime value)
         {
             return new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, 0);
@@ -380,10 +517,10 @@ namespace TVSchedulingSystem.Forms
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            if (_clockTimer != null)
+            if (timerClock != null)
             {
-                _clockTimer.Stop();
-                _clockTimer.Dispose();
+                timerClock.Stop();
+                timerClock.Dispose();
             }
 
             if (picturePreview.Image != null)
@@ -401,6 +538,65 @@ namespace TVSchedulingSystem.Forms
             LoginForm login = new LoginForm();
             login.Show();
             Close();
+        }
+
+        private static class Prompt
+        {
+            public static string ShowDialog(string text, string caption)
+            {
+                Form prompt = new Form
+                {
+                    Width = 420,
+                    Height = 170,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    Text = caption,
+                    StartPosition = FormStartPosition.CenterScreen,
+                    MinimizeBox = false,
+                    MaximizeBox = false
+                };
+
+                Label textLabel = new Label
+                {
+                    Left = 20,
+                    Top = 20,
+                    Width = 360,
+                    Text = text
+                };
+
+                TextBox textBox = new TextBox
+                {
+                    Left = 20,
+                    Top = 50,
+                    Width = 360
+                };
+
+                Button confirmation = new Button
+                {
+                    Text = "OK",
+                    Left = 220,
+                    Width = 75,
+                    Top = 85,
+                    DialogResult = DialogResult.OK
+                };
+
+                Button cancel = new Button
+                {
+                    Text = "Cancel",
+                    Left = 305,
+                    Width = 75,
+                    Top = 85,
+                    DialogResult = DialogResult.Cancel
+                };
+
+                prompt.Controls.Add(textLabel);
+                prompt.Controls.Add(textBox);
+                prompt.Controls.Add(confirmation);
+                prompt.Controls.Add(cancel);
+                prompt.AcceptButton = confirmation;
+                prompt.CancelButton = cancel;
+
+                return prompt.ShowDialog() == DialogResult.OK ? textBox.Text : string.Empty;
+            }
         }
     }
 }
