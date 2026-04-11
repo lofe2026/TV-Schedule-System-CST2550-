@@ -38,18 +38,20 @@ The system supports efficient search operations, including:
 
 ### AI Assistant
 
-The system includes an AI assistant integrated into the MainForm chat interface to support scheduling decisions.
+The system includes an AI assistant integrated into the Admin interface to support scheduling decisions. The AI is available through a chat panel in the main scheduling form.
 
 The AI assistant provides:
 
 * Conflict explanation
-* Slot suggestion
+* Next available slot suggestion
 * Channel recommendation
-* Natural language interaction
+* Natural language interaction based on current schedule data
 
-The AI is implemented using an AIService class, which combines user input with real-time schedule data and sends structured requests to an external AI model. Responses are displayed in the chat panel within the application.
+The AI is implemented through an `AIService` class. It combines the user’s message with real-time scheduling data, such as selected channel, selected start time, duration, and existing schedules, before sending the request to the AI model. The response is then displayed in the chat panel inside the application.
 
-The AI assistant acts as a decision-support feature and does not automatically modify schedules.
+The AI assistant is designed as a decision-support tool only. It helps the user understand scheduling options, but it does not automatically add, remove, or change schedules.
+
+The Manager form does not include the AI chat panel. It provides the same scheduling functions as the Admin side, except for the AI feature.
 
 ### Viewer Mode
 
