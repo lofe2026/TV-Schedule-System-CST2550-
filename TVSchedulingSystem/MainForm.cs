@@ -530,6 +530,8 @@ namespace TVSchedulingSystem
                 LoadPrograms();
                 _manager.LoadFromDatabase();
 
+                dtpStartTime.Value = GetNextValidStartTime();
+
                 if (cmbChannel.SelectedItem != null)
                 {
                     int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
@@ -723,12 +725,14 @@ namespace TVSchedulingSystem
             int channelId = Convert.ToInt32(cmbChannel.SelectedItem);
             int requiredDuration = (int)numDuration.Value;
             DateTime requestedStart = NormalizeToMinute(dtpStartTime.Value);
+            DateTime now = GetNextValidStartTime();
+
+            DateTime candidate = requestedStart < now ? now : requestedStart;
 
             Schedule[] schedules = _manager.GetSchedulesByChannel(channelId)
+                .Where(s => s.EndTime > now)
                 .OrderBy(s => s.StartTime)
                 .ToArray();
-
-            DateTime candidate = requestedStart;
 
             foreach (Schedule schedule in schedules)
             {
@@ -736,7 +740,7 @@ namespace TVSchedulingSystem
                     break;
 
                 if (candidate < schedule.EndTime)
-                    candidate = schedule.EndTime;
+                    candidate = NormalizeToMinute(schedule.EndTime);
             }
 
             dtpStartTime.Value = candidate;
@@ -891,6 +895,14 @@ namespace TVSchedulingSystem
                     : 1;
 
                 DateTime selectedStart = NormalizeToMinute(dtpStartTime.Value);
+                DateTime now = GetNextValidStartTime();
+
+                if (selectedStart < now)
+                {
+                    selectedStart = now;
+                    dtpStartTime.Value = now;
+                }
+
                 int selectedDuration = (int)numDuration.Value;
 
                 string aiReply = await _aiService.SendChatAsync(
@@ -1066,6 +1078,18 @@ namespace TVSchedulingSystem
         private DateTime NormalizeToMinute(DateTime value)
         {
             return new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, 0);
+        }
+
+        private DateTime GetNextValidStartTime()
+        {
+            DateTime now = DateTime.Now;
+
+            if (now.Second > 0 || now.Millisecond > 0)
+            {
+                now = now.AddMinutes(1);
+            }
+
+            return new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
