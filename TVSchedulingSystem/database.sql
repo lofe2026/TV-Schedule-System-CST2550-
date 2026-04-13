@@ -32,16 +32,22 @@ CREATE TABLE Users (
 );
 
 INSERT INTO Programs VALUES
-('P001', 'Morning News', 'Images/news.jpg'),
-('P002', 'Cartoon Hour', 'Images/cartoon.png'),
-('P003', 'Movie Time', 'Images/movie.jpeg'),
-('P004', 'Sports Live', 'Images/sports.png');
+('P001', 'Breaking News', 'Images/breakingNews.jpg'),
+('P002', 'Cunk on Earth', 'Images/cunkOnEarth.jpg'),
+('P003', 'Doctor Who', 'Images/doctorWho.jpg'),
+('P004', 'Friends', 'Images/friends.jpg'),
+('P005', 'Inception', 'Images/inception.jpg'),
+('P006', 'Interstellar', 'Images/interstellar.jpg'),
+('P007', 'Jimmy Kimmel Live!', 'Images/jimmyKimmelLive.jpg'),
+('P008', 'Morning News', 'Images/theMorningNews.jpg'),
+('P009', 'Mr. Bean', 'Images/mrBean.jpg'),
+('P010', 'Night News', 'Images/nightNews.jpg'),
+('P011', 'The Proposal', 'Images/theProposal.jpg'),
+('P012', 'The Ugly Truth', 'Images/theUglyTruth.jpg'),
+('P013', 'Top Gear', 'Images/topGear.jpg'),
+('P014', 'Weather Forecast', 'Images/weatherForecast.jpg');
 
 INSERT INTO Schedule VALUES
-(1, 1, 'P001', '2026-04-09 08:00:00', '2026-04-09 09:00:00', 'Images/news.jpg'),
-(2, 2, 'P002', '2026-04-09 09:00:00', '2026-04-09 10:00:00', 'Images/cartoon.jpg'),
-(3, 3, 'P003', '2026-04-09 10:00:00', '2026-04-09 12:00:00', 'Images/movie.jpg');
-
-SELECT * FROM Programs;
-SELECT * FROM Schedule;
-SELECT * FROM Users;
+(1, 1, 'P004', '2026-04-09 08:00:00', '2026-04-09 09:00:00', 'Images/friends.jpg'),
+(2, 2, 'P007', '2026-04-09 20:00:00', '2026-04-09 21:00:00', 'Images/jimmyKimmelLive.jpg'),
+(3, 3, 'P013', '2026-04-09 10:00:00', '2026-04-09 12:00:00', 'Images/topGear.jpg');
